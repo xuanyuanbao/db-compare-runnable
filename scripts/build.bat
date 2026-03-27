@@ -1,12 +1,8 @@
 @echo off
-setlocal enabledelayedexpansion
+setlocal
 cd /d %~dp0\..
-if exist out rmdir /s /q out
-mkdir out
-if exist .sources.list del /q .sources.list
-for /r src\main\java %%f in (*.java) do echo %%f>> .sources.list
-javac -encoding UTF-8 -d out @.sources.list
-if errorlevel 1 exit /b 1
-del /q .sources.list
-if exist src\main\resources xcopy src\main\resources out /E /I /Y >nul
-echo Build ok. Classes in %cd%\out
+if exist gradlew.bat (
+  call gradlew.bat clean build
+) else (
+  gradle clean build
+)
