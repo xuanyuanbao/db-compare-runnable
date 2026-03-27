@@ -1,10 +1,12 @@
 .idea/
 out/
+out-test/
 target/
 build/
 *.class
 *.log
 .sources.list
+.test-sources.list
 
 # accidental nested workspace copy
 db-compare-runnable/

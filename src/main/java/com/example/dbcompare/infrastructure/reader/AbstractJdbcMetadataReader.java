@@ -5,6 +5,7 @@ import com.example.dbcompare.domain.model.DataSourceInfo;
 import com.example.dbcompare.domain.model.DatabaseMeta;
 import com.example.dbcompare.domain.model.SchemaMeta;
 import com.example.dbcompare.domain.model.TableMeta;
+import com.example.dbcompare.infrastructure.reader.dialect.JdbcMetadataDialect;
 import com.example.dbcompare.util.NameNormalizer;
 
 import java.sql.Connection;
@@ -16,6 +17,12 @@ import java.util.List;
 import java.util.Properties;
 
 public abstract class AbstractJdbcMetadataReader implements MetadataReader {
+    private final JdbcMetadataDialect dialect;
+
+    protected AbstractJdbcMetadataReader(JdbcMetadataDialect dialect) {
+        this.dialect = dialect;
+    }
+
     @Override
     public DatabaseMeta loadMetadata(DataSourceInfo dataSourceInfo) {
         DatabaseMeta databaseMeta = new DatabaseMeta(dataSourceInfo.getSourceName());
@@ -45,10 +52,14 @@ public abstract class AbstractJdbcMetadataReader implements MetadataReader {
     }
 
     protected void loadTables(DatabaseMetaData metaData, DataSourceInfo dataSourceInfo, DatabaseMeta databaseMeta) throws SQLException {
-        try (ResultSet tables = metaData.getTables(dataSourceInfo.getCatalog(), null, "%", new String[]{"TABLE"})) {
+        try (ResultSet tables = metaData.getTables(
+                dataSourceInfo.getCatalog(),
+                dialect.schemaPattern(dataSourceInfo),
+                dialect.tableNamePattern(dataSourceInfo),
+                dialect.tableTypes())) {
             while (tables.next()) {
-                String schemaName = NameNormalizer.normalize(tables.getString("TABLE_SCHEM"));
-                String tableName = NameNormalizer.normalize(tables.getString("TABLE_NAME"));
+                String schemaName = dialect.normalizeSchemaName(tables.getString("TABLE_SCHEM"));
+                String tableName = dialect.normalizeTableName(tables.getString("TABLE_NAME"));
                 if (!shouldReadSchema(schemaName, dataSourceInfo) || !shouldReadTable(tableName, dataSourceInfo)) {
                     continue;
                 }
@@ -64,28 +75,16 @@ public abstract class AbstractJdbcMetadataReader implements MetadataReader {
         try (ResultSet columns = metaData.getColumns(dataSourceInfo.getCatalog(), schemaName, tableName, "%")) {
             while (columns.next()) {
                 ColumnMeta columnMeta = new ColumnMeta();
-                String columnName = NameNormalizer.normalize(columns.getString("COLUMN_NAME"));
+                String columnName = dialect.normalizeColumnName(columns.getString("COLUMN_NAME"));
                 columnMeta.setColumnName(columnName);
                 columnMeta.setDataType(columns.getString("TYPE_NAME"));
-                columnMeta.setLength(buildLength(columns));
+                columnMeta.setLength(dialect.buildLength(columns));
                 columnMeta.setNullable(columns.getString("IS_NULLABLE"));
                 columnMeta.setDefaultValue(columns.getString("COLUMN_DEF"));
                 columnMeta.setOrdinalPosition(columns.getInt("ORDINAL_POSITION"));
                 tableMeta.getColumns().put(columnName, columnMeta);
             }
         }
-    }
-
-    protected String buildLength(ResultSet columns) throws SQLException {
-        int size = columns.getInt("COLUMN_SIZE");
-        int decimalDigits = columns.getInt("DECIMAL_DIGITS");
-        if (columns.wasNull()) {
-            return null;
-        }
-        if (decimalDigits > 0) {
-            return size + "," + decimalDigits;
-        }
-        return String.valueOf(size);
     }
 
     protected boolean shouldReadSchema(String schemaName, DataSourceInfo source) {
