@@ -13,6 +13,9 @@ import java.nio.file.Path;
 import java.util.Properties;
 
 public class ConfigLoader {
+    public static final String DEFAULT_CONFIG_RESOURCE = "jdbc.properties";
+    public static final Path DEFAULT_CONFIG_PATH = Path.of("src", "main", "resources", DEFAULT_CONFIG_RESOURCE);
+
     public CompareConfig load(Path path) {
         Properties properties = new Properties();
         try (InputStream in = Files.newInputStream(path)) {
@@ -21,6 +24,29 @@ public class ConfigLoader {
             throw new IllegalStateException("Failed to load config: " + path, e);
         }
         return parse(properties);
+    }
+
+    public CompareConfig loadDefault() {
+        if (Files.exists(DEFAULT_CONFIG_PATH)) {
+            return load(DEFAULT_CONFIG_PATH);
+        }
+
+        ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
+        if (classLoader == null) {
+            classLoader = ConfigLoader.class.getClassLoader();
+        }
+
+        try (InputStream in = classLoader.getResourceAsStream(DEFAULT_CONFIG_RESOURCE)) {
+            if (in == null) {
+                throw new IllegalStateException("Default config not found: " + DEFAULT_CONFIG_PATH +
+                        " or classpath resource " + DEFAULT_CONFIG_RESOURCE);
+            }
+            Properties properties = new Properties();
+            properties.load(in);
+            return parse(properties);
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to load default config: " + DEFAULT_CONFIG_RESOURCE, e);
+        }
     }
 
     public CompareConfig parse(Properties properties) {

@@ -15,13 +15,16 @@ import java.util.List;
 
 public class CompareApplication {
     public static void main(String[] args) {
-        if (args.length == 0) {
-            printUsage();
-            return;
-        }
-        Path configPath = Path.of(args[0]);
         ConfigLoader configLoader = new ConfigLoader();
-        CompareConfig compareConfig = configLoader.load(configPath);
+        CompareConfig compareConfig;
+        if (args.length == 0) {
+            compareConfig = configLoader.loadDefault();
+            System.out.println("No config argument provided. Using default config: " + ConfigLoader.DEFAULT_CONFIG_PATH);
+        } else {
+            Path configPath = Path.of(args[0]);
+            compareConfig = configLoader.load(configPath);
+            System.out.println("Using config: " + configPath.toAbsolutePath());
+        }
         new ConfigValidator().validate(compareConfig);
 
         CompareOrchestrator orchestrator = new CompareOrchestrator(
@@ -38,7 +41,8 @@ public class CompareApplication {
     }
 
     private static void printUsage() {
-        System.out.println("Usage: java -cp out com.example.dbcompare.app.CompareApplication <config.properties>");
+        System.out.println("Usage: java -cp out com.example.dbcompare.app.CompareApplication [config.properties]");
+        System.out.println("Without arguments it loads src/main/resources/jdbc.properties");
         System.out.println("Example: java -cp out com.example.dbcompare.app.CompareApplication examples/demo/demo.properties");
     }
 }
