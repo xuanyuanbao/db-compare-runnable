@@ -13,7 +13,7 @@ import java.nio.file.Path;
 import java.util.Properties;
 
 public class ConfigLoader {
-    public static final String DEFAULT_CONFIG_RESOURCE = "jdbc.properties";
+    public static final String DEFAULT_CONFIG_RESOURCE = "application.properties";
     public static final Path DEFAULT_CONFIG_PATH = Path.of("src", "main", "resources", DEFAULT_CONFIG_RESOURCE);
 
     public CompareConfig load(Path path) {
