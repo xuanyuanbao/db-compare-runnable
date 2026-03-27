@@ -1,0 +1,45 @@
+package com.example.dbcompare.infrastructure.reader.dialect;
+
+import com.example.dbcompare.domain.model.DataSourceInfo;
+import com.example.dbcompare.util.NameNormalizer;
+
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
+public interface JdbcMetadataDialect {
+    default String schemaPattern(DataSourceInfo dataSourceInfo) {
+        return null;
+    }
+
+    default String tableNamePattern(DataSourceInfo dataSourceInfo) {
+        return "%";
+    }
+
+    default String[] tableTypes() {
+        return new String[]{"TABLE"};
+    }
+
+    default String normalizeSchemaName(String schemaName) {
+        return NameNormalizer.normalize(schemaName);
+    }
+
+    default String normalizeTableName(String tableName) {
+        return NameNormalizer.normalize(tableName);
+    }
+
+    default String normalizeColumnName(String columnName) {
+        return NameNormalizer.normalize(columnName);
+    }
+
+    default String buildLength(ResultSet columns) throws SQLException {
+        int size = columns.getInt("COLUMN_SIZE");
+        int decimalDigits = columns.getInt("DECIMAL_DIGITS");
+        if (columns.wasNull()) {
+            return null;
+        }
+        if (decimalDigits > 0) {
+            return size + "," + decimalDigits;
+        }
+        return String.valueOf(size);
+    }
+}
