@@ -1,8 +1,0 @@
-sourceCount=2
-sourceSchemaCount=2
-sourceTableCount=3
-diffCount=4
-diffTypeCount:
-  COLUMN_MISSING_IN_SOURCE=1
-  COLUMN_LENGTH_MISMATCH=2
-  COLUMN_DEFAULT_MISMATCH=1

@@ -1,3 +1,0 @@
-databaseName,schemaName,tableName,columnName,dataType,length,nullable,defaultValue,ordinalPosition
-DB2_1,LEGACY_B,CUSTOMER,ID,INTEGER,10,NO,,1
-DB2_1,LEGACY_B,CUSTOMER,NICKNAME,VARCHAR,30,YES,,2

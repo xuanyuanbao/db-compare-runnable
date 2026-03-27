@@ -1,0 +1,10 @@
+.idea/
+out/
+target/
+build/
+*.class
+*.log
+.sources.list
+
+# accidental nested workspace copy
+db-compare-runnable/

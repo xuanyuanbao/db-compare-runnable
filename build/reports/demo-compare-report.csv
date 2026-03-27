@@ -1,5 +1,0 @@
-sourceDatabase,sourceSchema,sourceTable,targetSchema,targetTable,columnName,diffType,sourceValue,targetValue,message
-"AS400_1","LEGACY_A","USER_INFO","T_AS400_1","USER_INFO","NAME","COLUMN_LENGTH_MISMATCH","50","60","字段长度不一致"
-"AS400_1","LEGACY_A","USER_INFO","T_AS400_1","USER_INFO","STATUS","COLUMN_DEFAULT_MISMATCH","A","B","字段默认值不一致"
-"DB2_1","LEGACY_B","CUSTOMER","T_DB2_1","CUSTOMER","EXTRA_COL","COLUMN_MISSING_IN_SOURCE","不存在","存在","高斯存在但源库不存在该字段"
-"DB2_1","LEGACY_B","CUSTOMER","T_DB2_1","CUSTOMER","NICKNAME","COLUMN_LENGTH_MISMATCH","30","50","字段长度不一致"
