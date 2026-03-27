@@ -16,7 +16,7 @@ public class CompareApplication {
     public static void main(String[] args) {
         ConfigLoader configLoader = new ConfigLoader();
         CompareConfig compareConfig = configLoader.loadDefault();
-        System.out.println("Using config: " + ConfigLoader.DEFAULT_CONFIG_PATH);
+        System.out.println("Using config: " + ConfigLoader.DEFAULT_CONFIG_RESOURCE);
         new ConfigValidator().validate(compareConfig);
 
         CompareOrchestrator orchestrator = new CompareOrchestrator(
