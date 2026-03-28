@@ -2,6 +2,7 @@ package com.example.dbcompare.service;
 
 import com.example.dbcompare.domain.model.*;
 import com.example.dbcompare.infrastructure.output.CsvReportWriter;
+import com.example.dbcompare.infrastructure.output.ExcelReportWriter;
 import com.example.dbcompare.infrastructure.output.SummaryReportWriter;
 import com.example.dbcompare.util.NameNormalizer;
 
@@ -15,17 +16,20 @@ public class CompareOrchestrator {
     private final MappingService mappingService;
     private final TableCompareService tableCompareService;
     private final CsvReportWriter csvReportWriter;
+    private final ExcelReportWriter excelReportWriter;
     private final SummaryReportWriter summaryReportWriter;
 
     public CompareOrchestrator(MetadataLoadService metadataLoadService,
                                MappingService mappingService,
                                TableCompareService tableCompareService,
                                CsvReportWriter csvReportWriter,
+                               ExcelReportWriter excelReportWriter,
                                SummaryReportWriter summaryReportWriter) {
         this.metadataLoadService = metadataLoadService;
         this.mappingService = mappingService;
         this.tableCompareService = tableCompareService;
         this.csvReportWriter = csvReportWriter;
+        this.excelReportWriter = excelReportWriter;
         this.summaryReportWriter = summaryReportWriter;
     }
 
@@ -34,6 +38,7 @@ public class CompareOrchestrator {
         DatabaseMeta targetMetadata = metadataLoadService.loadTarget(compareConfig.getTarget());
 
         List<DiffRecord> allDiffs = new ArrayList<>();
+        List<ColumnComparisonRecord> allColumnRecords = new ArrayList<>();
         int sourceSchemaCount = 0;
         int sourceTableCount = 0;
 
@@ -55,13 +60,16 @@ public class CompareOrchestrator {
 
                     SchemaMeta targetSchema = targetMetadata.getSchemas().get(NameNormalizer.normalize(tableTarget.getSchemaName()));
                     TableMeta targetTable = targetSchema == null ? null : targetSchema.getTables().get(NameNormalizer.normalize(tableTarget.getTableName()));
-                    allDiffs.addAll(tableCompareService.compare(sourceInfo, sourceSchema.getSchemaName(), sourceTable,
-                            tableTarget.getSchemaName(), targetTable, compareConfig.getOptions()));
+                    TableComparisonResult comparisonResult = tableCompareService.compareDetailed(sourceInfo, sourceSchema.getSchemaName(), sourceTable,
+                            tableTarget.getSchemaName(), targetTable, compareConfig.getOptions());
+                    allDiffs.addAll(comparisonResult.getDiffs());
+                    allColumnRecords.addAll(comparisonResult.getColumnRecords());
                 }
             }
         }
 
         csvReportWriter.write(Path.of(compareConfig.getOutput().getCsvPath()), allDiffs);
+        excelReportWriter.write(Path.of(compareConfig.getOutput().getExcelPath()), allColumnRecords);
         CompareSummary summary = CompareSummary.from(allDiffs, compareConfig.getSources().size(), sourceSchemaCount, sourceTableCount);
         summaryReportWriter.write(Path.of(compareConfig.getOutput().getSummaryPath()), summary);
         return allDiffs;

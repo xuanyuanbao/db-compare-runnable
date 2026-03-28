@@ -1,18 +1,26 @@
 package com.example.dbcompare.service;
 
+import com.example.dbcompare.domain.enums.ComparisonStatus;
 import com.example.dbcompare.domain.enums.DatabaseType;
 import com.example.dbcompare.domain.enums.DiffType;
+import com.example.dbcompare.domain.model.ColumnComparisonRecord;
 import com.example.dbcompare.domain.model.ColumnMeta;
 import com.example.dbcompare.domain.model.CompareOptions;
 import com.example.dbcompare.domain.model.DataSourceInfo;
 import com.example.dbcompare.domain.model.DiffRecord;
+import com.example.dbcompare.domain.model.TableComparisonResult;
 import com.example.dbcompare.domain.model.TableMeta;
 import com.example.dbcompare.util.DefaultValueNormalizer;
 import com.example.dbcompare.util.TypeNormalizer;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 public class TableCompareService {
+    private static final String MATCH_MESSAGE = "MATCH";
+
     private final TypeNormalizer typeNormalizer = new TypeNormalizer();
 
     public List<DiffRecord> compare(DataSourceInfo sourceInfo,
@@ -21,108 +29,264 @@ public class TableCompareService {
                                     String targetSchema,
                                     TableMeta targetTable,
                                     CompareOptions options) {
-        List<DiffRecord> diffs = new ArrayList<>();
+        return compareDetailed(sourceInfo, sourceSchema, sourceTable, targetSchema, targetTable, options).getDiffs();
+    }
+
+    public TableComparisonResult compareDetailed(DataSourceInfo sourceInfo,
+                                                 String sourceSchema,
+                                                 TableMeta sourceTable,
+                                                 String targetSchema,
+                                                 TableMeta targetTable,
+                                                 CompareOptions options) {
+        TableComparisonResult result = new TableComparisonResult();
         if (sourceTable == null) {
-            diffs.add(buildTableDiff(sourceInfo.getSourceName(), sourceSchema, null, targetSchema,
+            result.getDiffs().add(buildTableDiff(sourceInfo.getSourceName(), sourceSchema, null, targetSchema,
                     targetTable == null ? null : targetTable.getTableName(), DiffType.SOURCE_TABLE_NOT_FOUND,
-                    null, null, "源表不存在"));
-            return diffs;
+                    null, null, "Source table not found"));
+            result.getColumnRecords().add(buildTableMissingRow(sourceInfo, sourceSchema, null, targetSchema,
+                    targetTable == null ? null : targetTable.getTableName(), false, targetTable != null,
+                    DiffType.SOURCE_TABLE_NOT_FOUND, "Source table not found"));
+            return result;
         }
         if (targetTable == null) {
-            diffs.add(buildTableDiff(sourceInfo.getSourceName(), sourceSchema, sourceTable.getTableName(), targetSchema,
+            result.getDiffs().add(buildTableDiff(sourceInfo.getSourceName(), sourceSchema, sourceTable.getTableName(), targetSchema,
                     sourceTable.getTableName(), DiffType.TARGET_TABLE_NOT_FOUND,
-                    "存在", "不存在", "高斯目标表不存在"));
-            return diffs;
-        }
-        compareColumnExistence(sourceInfo, sourceSchema, sourceTable, targetSchema, targetTable, diffs);
-        compareColumnAttributes(sourceInfo, sourceSchema, sourceTable, targetSchema, targetTable, diffs, options);
-        return diffs;
-    }
-
-    private void compareColumnExistence(DataSourceInfo sourceInfo, String sourceSchema, TableMeta sourceTable,
-                                        String targetSchema, TableMeta targetTable, List<DiffRecord> diffs) {
-        Set<String> sourceColumns = new HashSet<>(sourceTable.getColumns().keySet());
-        Set<String> targetColumns = new HashSet<>(targetTable.getColumns().keySet());
-
-        Set<String> onlyInSource = new HashSet<>(sourceColumns);
-        onlyInSource.removeAll(targetColumns);
-        for (String column : onlyInSource) {
-            diffs.add(buildColumnDiff(sourceInfo.getSourceName(), sourceSchema, sourceTable.getTableName(), targetSchema,
-                    targetTable.getTableName(), column, DiffType.COLUMN_MISSING_IN_TARGET,
-                    "存在", "不存在", "源库存在但高斯不存在该字段"));
+                    "PRESENT", "MISSING", "Target table not found"));
+            appendMissingTargetTableRows(result, sourceInfo, sourceSchema, sourceTable, targetSchema);
+            return result;
         }
 
-        Set<String> onlyInTarget = new HashSet<>(targetColumns);
-        onlyInTarget.removeAll(sourceColumns);
-        for (String column : onlyInTarget) {
-            diffs.add(buildColumnDiff(sourceInfo.getSourceName(), sourceSchema, sourceTable.getTableName(), targetSchema,
-                    targetTable.getTableName(), column, DiffType.COLUMN_MISSING_IN_SOURCE,
-                    "不存在", "存在", "高斯存在但源库不存在该字段"));
-        }
-    }
-
-    private void compareColumnAttributes(DataSourceInfo sourceInfo, String sourceSchema, TableMeta sourceTable,
-                                         String targetSchema, TableMeta targetTable, List<DiffRecord> diffs,
-                                         CompareOptions options) {
-        for (Map.Entry<String, ColumnMeta> entry : sourceTable.getColumns().entrySet()) {
-            String columnName = entry.getKey();
-            ColumnMeta sourceColumn = entry.getValue();
+        for (String columnName : mergeColumns(sourceTable, targetTable)) {
+            ColumnMeta sourceColumn = sourceTable.getColumns().get(columnName);
             ColumnMeta targetColumn = targetTable.getColumns().get(columnName);
-            if (targetColumn == null) continue;
 
-            compareType(sourceInfo, sourceSchema, sourceTable, targetSchema, targetTable, diffs, columnName, sourceColumn, targetColumn);
-            if (options.isCompareLength()) compareLength(sourceInfo, sourceSchema, sourceTable, targetSchema, targetTable, diffs, columnName, sourceColumn, targetColumn);
-            if (options.isCompareDefaultValue()) compareDefaultValue(sourceInfo, sourceSchema, sourceTable, targetSchema, targetTable, diffs, columnName, sourceColumn, targetColumn);
-            if (options.isCompareNullable()) compareNullable(sourceInfo, sourceSchema, sourceTable, targetSchema, targetTable, diffs, columnName, sourceColumn, targetColumn);
+            if (sourceColumn == null) {
+                result.getDiffs().add(buildColumnDiff(sourceInfo.getSourceName(), sourceSchema, sourceTable.getTableName(), targetSchema,
+                        targetTable.getTableName(), columnName, DiffType.COLUMN_MISSING_IN_SOURCE,
+                        "MISSING", "PRESENT", "Column exists only in target"));
+                result.getColumnRecords().add(buildMissingColumnRow(sourceInfo, sourceSchema, sourceTable.getTableName(),
+                        targetSchema, targetTable.getTableName(), columnName, sourceColumn, targetColumn,
+                        false, true, DiffType.COLUMN_MISSING_IN_SOURCE, "Column exists only in target"));
+                continue;
+            }
+
+            if (targetColumn == null) {
+                result.getDiffs().add(buildColumnDiff(sourceInfo.getSourceName(), sourceSchema, sourceTable.getTableName(), targetSchema,
+                        targetTable.getTableName(), columnName, DiffType.COLUMN_MISSING_IN_TARGET,
+                        "PRESENT", "MISSING", "Column exists only in source"));
+                result.getColumnRecords().add(buildMissingColumnRow(sourceInfo, sourceSchema, sourceTable.getTableName(),
+                        targetSchema, targetTable.getTableName(), columnName, sourceColumn, null,
+                        true, false, DiffType.COLUMN_MISSING_IN_TARGET, "Column exists only in source"));
+                continue;
+            }
+
+            result.getColumnRecords().add(compareExistingColumn(result, sourceInfo, sourceSchema, sourceTable.getTableName(),
+                    targetSchema, targetTable.getTableName(), columnName, sourceColumn, targetColumn, options));
+        }
+        return result;
+    }
+
+    private void appendMissingTargetTableRows(TableComparisonResult result,
+                                              DataSourceInfo sourceInfo,
+                                              String sourceSchema,
+                                              TableMeta sourceTable,
+                                              String targetSchema) {
+        if (sourceTable.getColumns().isEmpty()) {
+            result.getColumnRecords().add(buildTableMissingRow(sourceInfo, sourceSchema, sourceTable.getTableName(), targetSchema,
+                    sourceTable.getTableName(), true, false, DiffType.TARGET_TABLE_NOT_FOUND, "Target table not found"));
+            return;
+        }
+        for (ColumnMeta sourceColumn : sourceTable.getColumns().values()) {
+            result.getColumnRecords().add(buildMissingColumnRow(sourceInfo, sourceSchema, sourceTable.getTableName(),
+                    targetSchema, sourceTable.getTableName(), sourceColumn.getColumnName(), sourceColumn, null,
+                    true, false, DiffType.TARGET_TABLE_NOT_FOUND, "Target table not found"));
         }
     }
 
-    private void compareType(DataSourceInfo sourceInfo, String sourceSchema, TableMeta sourceTable, String targetSchema,
-                             TableMeta targetTable, List<DiffRecord> diffs, String columnName,
-                             ColumnMeta sourceColumn, ColumnMeta targetColumn) {
-        String sourceType = typeNormalizer.normalize(sourceInfo.getType(), sourceColumn.getDataType());
-        String targetType = typeNormalizer.normalize(DatabaseType.GAUSS, targetColumn.getDataType());
-        if (!Objects.equals(sourceType, targetType)) {
-            diffs.add(buildColumnDiff(sourceInfo.getSourceName(), sourceSchema, sourceTable.getTableName(), targetSchema,
-                    targetTable.getTableName(), columnName, DiffType.COLUMN_TYPE_MISMATCH,
-                    sourceType, targetType, "字段类型不一致"));
-        }
-    }
+    private ColumnComparisonRecord compareExistingColumn(TableComparisonResult result,
+                                                         DataSourceInfo sourceInfo,
+                                                         String sourceSchema,
+                                                         String sourceTableName,
+                                                         String targetSchema,
+                                                         String targetTableName,
+                                                         String columnName,
+                                                         ColumnMeta sourceColumn,
+                                                         ColumnMeta targetColumn,
+                                                         CompareOptions options) {
+        ColumnComparisonRecord record = buildBaseRow(sourceInfo, sourceSchema, sourceTableName, targetSchema, targetTableName, columnName);
+        record.setSourceColumnExists(true);
+        record.setTargetColumnExists(true);
 
-    private void compareLength(DataSourceInfo sourceInfo, String sourceSchema, TableMeta sourceTable, String targetSchema,
-                               TableMeta targetTable, List<DiffRecord> diffs, String columnName,
-                               ColumnMeta sourceColumn, ColumnMeta targetColumn) {
+        List<String> messages = new ArrayList<>();
+        List<String> diffTypes = new ArrayList<>();
+
+        String sourceType = normalizeType(sourceInfo.getType(), sourceColumn);
+        String targetType = normalizeType(DatabaseType.GAUSS, targetColumn);
+        record.setSourceType(sourceType);
+        record.setTargetType(targetType);
+        applyAttributeComparison(record::setTypeStatus, Objects.equals(sourceType, targetType),
+                DiffType.COLUMN_TYPE_MISMATCH, "Type mismatch", diffTypes, messages, result,
+                sourceInfo, sourceSchema, sourceTableName, targetSchema, targetTableName, columnName,
+                sourceType, targetType);
+
         String sourceLength = normalizeLength(sourceColumn.getLength());
         String targetLength = normalizeLength(targetColumn.getLength());
-        if (!Objects.equals(sourceLength, targetLength)) {
-            diffs.add(buildColumnDiff(sourceInfo.getSourceName(), sourceSchema, sourceTable.getTableName(), targetSchema,
-                    targetTable.getTableName(), columnName, DiffType.COLUMN_LENGTH_MISMATCH,
-                    sourceLength, targetLength, "字段长度不一致"));
-        }
-    }
+        record.setSourceLength(sourceLength);
+        record.setTargetLength(targetLength);
+        applyOptionalAttributeComparison(record::setLengthStatus, options.isCompareLength(), Objects.equals(sourceLength, targetLength),
+                DiffType.COLUMN_LENGTH_MISMATCH, "Length mismatch", diffTypes, messages, result,
+                sourceInfo, sourceSchema, sourceTableName, targetSchema, targetTableName, columnName,
+                sourceLength, targetLength);
 
-    private void compareDefaultValue(DataSourceInfo sourceInfo, String sourceSchema, TableMeta sourceTable, String targetSchema,
-                                     TableMeta targetTable, List<DiffRecord> diffs, String columnName,
-                                     ColumnMeta sourceColumn, ColumnMeta targetColumn) {
         String sourceDefault = DefaultValueNormalizer.normalize(sourceColumn.getDefaultValue());
         String targetDefault = DefaultValueNormalizer.normalize(targetColumn.getDefaultValue());
-        if (!Objects.equals(sourceDefault, targetDefault)) {
-            diffs.add(buildColumnDiff(sourceInfo.getSourceName(), sourceSchema, sourceTable.getTableName(), targetSchema,
-                    targetTable.getTableName(), columnName, DiffType.COLUMN_DEFAULT_MISMATCH,
-                    sourceDefault, targetDefault, "字段默认值不一致"));
+        record.setSourceDefaultValue(sourceDefault);
+        record.setTargetDefaultValue(targetDefault);
+        applyOptionalAttributeComparison(record::setDefaultStatus, options.isCompareDefaultValue(), Objects.equals(sourceDefault, targetDefault),
+                DiffType.COLUMN_DEFAULT_MISMATCH, "Default value mismatch", diffTypes, messages, result,
+                sourceInfo, sourceSchema, sourceTableName, targetSchema, targetTableName, columnName,
+                sourceDefault, targetDefault);
+
+        String sourceNullable = normalizeNullable(sourceColumn.getNullable());
+        String targetNullable = normalizeNullable(targetColumn.getNullable());
+        record.setSourceNullable(sourceNullable);
+        record.setTargetNullable(targetNullable);
+        applyOptionalAttributeComparison(record::setNullableStatus, options.isCompareNullable(), Objects.equals(sourceNullable, targetNullable),
+                DiffType.COLUMN_NULLABLE_MISMATCH, "Nullable mismatch", diffTypes, messages, result,
+                sourceInfo, sourceSchema, sourceTableName, targetSchema, targetTableName, columnName,
+                sourceNullable, targetNullable);
+
+        if (diffTypes.isEmpty()) {
+            record.setOverallStatus(ComparisonStatus.MATCH);
+            record.setDiffTypes("");
+            record.setMessage(MATCH_MESSAGE);
+        } else {
+            record.setOverallStatus(ComparisonStatus.MISMATCH);
+            record.setDiffTypes(String.join("|", diffTypes));
+            record.setMessage(String.join("; ", messages));
+        }
+        return record;
+    }
+
+    private void applyAttributeComparison(StatusConsumer statusConsumer,
+                                          boolean matched,
+                                          DiffType diffType,
+                                          String message,
+                                          List<String> diffTypes,
+                                          List<String> messages,
+                                          TableComparisonResult result,
+                                          DataSourceInfo sourceInfo,
+                                          String sourceSchema,
+                                          String sourceTableName,
+                                          String targetSchema,
+                                          String targetTableName,
+                                          String columnName,
+                                          String sourceValue,
+                                          String targetValue) {
+        statusConsumer.accept(matched ? ComparisonStatus.MATCH : ComparisonStatus.MISMATCH);
+        if (!matched) {
+            diffTypes.add(diffType.name());
+            messages.add(message);
+            result.getDiffs().add(buildColumnDiff(sourceInfo.getSourceName(), sourceSchema, sourceTableName, targetSchema,
+                    targetTableName, columnName, diffType, sourceValue, targetValue, message));
         }
     }
 
-    private void compareNullable(DataSourceInfo sourceInfo, String sourceSchema, TableMeta sourceTable, String targetSchema,
-                                 TableMeta targetTable, List<DiffRecord> diffs, String columnName,
-                                 ColumnMeta sourceColumn, ColumnMeta targetColumn) {
-        String sourceNullable = normalizeNullable(sourceColumn.getNullable());
-        String targetNullable = normalizeNullable(targetColumn.getNullable());
-        if (!Objects.equals(sourceNullable, targetNullable)) {
-            diffs.add(buildColumnDiff(sourceInfo.getSourceName(), sourceSchema, sourceTable.getTableName(), targetSchema,
-                    targetTable.getTableName(), columnName, DiffType.COLUMN_NULLABLE_MISMATCH,
-                    sourceNullable, targetNullable, "字段可空属性不一致"));
+    private void applyOptionalAttributeComparison(StatusConsumer statusConsumer,
+                                                  boolean enabled,
+                                                  boolean matched,
+                                                  DiffType diffType,
+                                                  String message,
+                                                  List<String> diffTypes,
+                                                  List<String> messages,
+                                                  TableComparisonResult result,
+                                                  DataSourceInfo sourceInfo,
+                                                  String sourceSchema,
+                                                  String sourceTableName,
+                                                  String targetSchema,
+                                                  String targetTableName,
+                                                  String columnName,
+                                                  String sourceValue,
+                                                  String targetValue) {
+        if (!enabled) {
+            statusConsumer.accept(ComparisonStatus.NOT_APPLICABLE);
+            return;
         }
+        applyAttributeComparison(statusConsumer, matched, diffType, message, diffTypes, messages, result,
+                sourceInfo, sourceSchema, sourceTableName, targetSchema, targetTableName, columnName, sourceValue, targetValue);
+    }
+
+    private ColumnComparisonRecord buildMissingColumnRow(DataSourceInfo sourceInfo,
+                                                         String sourceSchema,
+                                                         String sourceTableName,
+                                                         String targetSchema,
+                                                         String targetTableName,
+                                                         String columnName,
+                                                         ColumnMeta sourceColumn,
+                                                         ColumnMeta targetColumn,
+                                                         boolean sourceExists,
+                                                         boolean targetExists,
+                                                         DiffType diffType,
+                                                         String message) {
+        ColumnComparisonRecord record = buildBaseRow(sourceInfo, sourceSchema, sourceTableName, targetSchema, targetTableName, columnName);
+        record.setSourceColumnExists(sourceExists);
+        record.setTargetColumnExists(targetExists);
+        record.setSourceType(sourceColumn == null ? null : normalizeType(sourceInfo.getType(), sourceColumn));
+        record.setTargetType(targetColumn == null ? null : normalizeType(DatabaseType.GAUSS, targetColumn));
+        record.setSourceLength(sourceColumn == null ? null : normalizeLength(sourceColumn.getLength()));
+        record.setTargetLength(targetColumn == null ? null : normalizeLength(targetColumn.getLength()));
+        record.setSourceDefaultValue(sourceColumn == null ? null : DefaultValueNormalizer.normalize(sourceColumn.getDefaultValue()));
+        record.setTargetDefaultValue(targetColumn == null ? null : DefaultValueNormalizer.normalize(targetColumn.getDefaultValue()));
+        record.setSourceNullable(sourceColumn == null ? null : normalizeNullable(sourceColumn.getNullable()));
+        record.setTargetNullable(targetColumn == null ? null : normalizeNullable(targetColumn.getNullable()));
+        record.setTypeStatus(ComparisonStatus.NOT_APPLICABLE);
+        record.setLengthStatus(ComparisonStatus.NOT_APPLICABLE);
+        record.setDefaultStatus(ComparisonStatus.NOT_APPLICABLE);
+        record.setNullableStatus(ComparisonStatus.NOT_APPLICABLE);
+        record.setOverallStatus(ComparisonStatus.MISMATCH);
+        record.setDiffTypes(diffType.name());
+        record.setMessage(message);
+        return record;
+    }
+
+    private ColumnComparisonRecord buildTableMissingRow(DataSourceInfo sourceInfo,
+                                                        String sourceSchema,
+                                                        String sourceTableName,
+                                                        String targetSchema,
+                                                        String targetTableName,
+                                                        boolean sourceExists,
+                                                        boolean targetExists,
+                                                        DiffType diffType,
+                                                        String message) {
+        return buildMissingColumnRow(sourceInfo, sourceSchema, sourceTableName, targetSchema, targetTableName,
+                "(TABLE)", null, null, sourceExists, targetExists, diffType, message);
+    }
+
+    private ColumnComparisonRecord buildBaseRow(DataSourceInfo sourceInfo,
+                                                String sourceSchema,
+                                                String sourceTableName,
+                                                String targetSchema,
+                                                String targetTableName,
+                                                String columnName) {
+        ColumnComparisonRecord record = new ColumnComparisonRecord();
+        record.setSourceDatabaseName(sourceInfo.getSourceName());
+        record.setSourceSchemaName(sourceSchema);
+        record.setSourceTableName(sourceTableName);
+        record.setTargetSchemaName(targetSchema);
+        record.setTargetTableName(targetTableName);
+        record.setColumnName(columnName);
+        return record;
+    }
+
+    private List<String> mergeColumns(TableMeta sourceTable, TableMeta targetTable) {
+        List<String> columns = new ArrayList<>();
+        columns.addAll(sourceTable.getColumns().keySet());
+        for (String targetColumn : targetTable.getColumns().keySet()) {
+            if (!columns.contains(targetColumn)) {
+                columns.add(targetColumn);
+            }
+        }
+        return columns;
     }
 
     private String normalizeNullable(String value) {
@@ -137,6 +301,10 @@ public class TableCompareService {
         if (value == null) return null;
         String normalized = value.trim();
         return normalized.endsWith(",0") ? normalized.substring(0, normalized.length() - 2) : normalized;
+    }
+
+    private String normalizeType(DatabaseType databaseType, ColumnMeta columnMeta) {
+        return typeNormalizer.normalize(databaseType, columnMeta.getDataType());
     }
 
     private DiffRecord buildTableDiff(String sourceDb, String sourceSchema, String sourceTable, String targetSchema,
@@ -161,5 +329,10 @@ public class TableCompareService {
         DiffRecord record = buildTableDiff(sourceDb, sourceSchema, sourceTable, targetSchema, targetTable, diffType, sourceValue, targetValue, message);
         record.setColumnName(columnName);
         return record;
+    }
+
+    @FunctionalInterface
+    private interface StatusConsumer {
+        void accept(ComparisonStatus status);
     }
 }

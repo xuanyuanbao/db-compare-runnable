@@ -31,6 +31,7 @@ public class CompareApplicationRunner implements ApplicationRunner {
         int diffCount = compareOrchestrator.execute(properties).size();
         log.info("Compare finished. diffCount={}", diffCount);
         log.info("CSV report: {}", properties.getOutput().getCsvPath());
+        log.info("Excel report: {}", properties.getOutput().getExcelPath());
         log.info("Summary report: {}", properties.getOutput().getSummaryPath());
     }
 }

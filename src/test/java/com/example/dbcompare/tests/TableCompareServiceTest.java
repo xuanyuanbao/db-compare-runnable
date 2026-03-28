@@ -1,11 +1,14 @@
 package com.example.dbcompare.tests;
 
+import com.example.dbcompare.domain.enums.ComparisonStatus;
 import com.example.dbcompare.domain.enums.DatabaseType;
 import com.example.dbcompare.domain.enums.DiffType;
+import com.example.dbcompare.domain.model.ColumnComparisonRecord;
 import com.example.dbcompare.domain.model.ColumnMeta;
 import com.example.dbcompare.domain.model.CompareOptions;
 import com.example.dbcompare.domain.model.DataSourceInfo;
 import com.example.dbcompare.domain.model.DiffRecord;
+import com.example.dbcompare.domain.model.TableComparisonResult;
 import com.example.dbcompare.domain.model.TableMeta;
 import com.example.dbcompare.service.TableCompareService;
 
@@ -28,12 +31,15 @@ public final class TableCompareServiceTest {
         sourceTable.getColumns().put("NAME", column("NAME", "VARGRAPHIC", "50", "YES", "'A'"));
         sourceTable.getColumns().put("ONLY_SRC", column("ONLY_SRC", "CHARACTER", "10", "NO", null));
         sourceTable.getColumns().put("CODE", column("CODE", "CHARACTER", "8", "NO", null));
+        sourceTable.getColumns().put("ID", column("ID", "INTEGER", "10", "NO", null));
 
         targetTable.getColumns().put("NAME", column("NAME", "VARCHAR", "60", "NO", "'B'::character varying"));
         targetTable.getColumns().put("ONLY_TGT", column("ONLY_TGT", "VARCHAR", "10", "YES", null));
         targetTable.getColumns().put("CODE", column("CODE", "INTEGER", "8", "NO", null));
+        targetTable.getColumns().put("ID", column("ID", "INTEGER", "10", "NO", null));
 
         List<DiffRecord> diffs = service.compare(sourceInfo, "LEGACY_A", sourceTable, "T_AS400_A", targetTable, options);
+        TableComparisonResult detailed = service.compareDetailed(sourceInfo, "LEGACY_A", sourceTable, "T_AS400_A", targetTable, options);
 
         TestSupport.assertTrue(contains(diffs, DiffType.COLUMN_MISSING_IN_TARGET, "ONLY_SRC"),
                 "missing target columns should be reported");
@@ -47,6 +53,12 @@ public final class TableCompareServiceTest {
                 "nullable mismatches should be reported");
         TestSupport.assertTrue(contains(diffs, DiffType.COLUMN_TYPE_MISMATCH, "CODE"),
                 "type mismatches should be reported");
+        TestSupport.assertEquals(5, detailed.getColumnRecords().size(),
+                "detailed results should include matching and mismatching columns");
+        TestSupport.assertEquals(ComparisonStatus.MATCH, statusOf(detailed.getColumnRecords(), "ID"),
+                "matching columns should be marked as MATCH");
+        TestSupport.assertEquals(ComparisonStatus.MISMATCH, statusOf(detailed.getColumnRecords(), "CODE"),
+                "mismatching columns should be marked as MISMATCH");
 
         List<DiffRecord> missingTarget = service.compare(sourceInfo, "LEGACY_A", sourceTable, "T_AS400_A", null, options);
         TestSupport.assertEquals(1, missingTarget.size(), "missing target table should short-circuit to one diff");
@@ -71,5 +83,14 @@ public final class TableCompareServiceTest {
             }
         }
         return false;
+    }
+
+    private static ComparisonStatus statusOf(List<ColumnComparisonRecord> records, String columnName) {
+        for (ColumnComparisonRecord record : records) {
+            if (columnName.equals(record.getColumnName())) {
+                return record.getOverallStatus();
+            }
+        }
+        return null;
     }
 }
