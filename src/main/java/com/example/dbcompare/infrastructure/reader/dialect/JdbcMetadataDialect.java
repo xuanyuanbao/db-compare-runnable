@@ -31,6 +31,14 @@ public interface JdbcMetadataDialect {
         return NameNormalizer.normalize(columnName);
     }
 
+    default boolean shouldIncludeSchema(String schemaName) {
+        return true;
+    }
+
+    default boolean shouldIncludeTable(String schemaName, String tableName) {
+        return true;
+    }
+
     default String buildLength(ResultSet columns) throws SQLException {
         int size = columns.getInt("COLUMN_SIZE");
         int decimalDigits = columns.getInt("DECIMAL_DIGITS");

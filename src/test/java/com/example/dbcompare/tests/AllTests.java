@@ -5,6 +5,7 @@ public class AllTests {
         run("TypeNormalizerTest", TypeNormalizerTest::run);
         run("MappingServiceTest", MappingServiceTest::run);
         run("ConfigLoaderTest", ConfigLoaderTest::run);
+        run("JdbcMetadataDialectTest", JdbcMetadataDialectTest::run);
         run("TableCompareServiceTest", TableCompareServiceTest::run);
         run("CompareOrchestratorSmokeTest", CompareOrchestratorSmokeTest::run);
         System.out.println("All tests passed.");

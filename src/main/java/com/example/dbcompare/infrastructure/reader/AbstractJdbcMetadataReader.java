@@ -60,7 +60,10 @@ public abstract class AbstractJdbcMetadataReader implements MetadataReader {
             while (tables.next()) {
                 String schemaName = dialect.normalizeSchemaName(tables.getString("TABLE_SCHEM"));
                 String tableName = dialect.normalizeTableName(tables.getString("TABLE_NAME"));
-                if (!shouldReadSchema(schemaName, dataSourceInfo) || !shouldReadTable(tableName, dataSourceInfo)) {
+                if (!dialect.shouldIncludeSchema(schemaName)
+                        || !dialect.shouldIncludeTable(schemaName, tableName)
+                        || !shouldReadSchema(schemaName, dataSourceInfo)
+                        || !shouldReadTable(tableName, dataSourceInfo)) {
                     continue;
                 }
                 SchemaMeta schemaMeta = databaseMeta.getSchemas().computeIfAbsent(schemaName, SchemaMeta::new);
