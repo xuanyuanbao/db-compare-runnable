@@ -58,8 +58,10 @@ public abstract class AbstractJdbcMetadataReader implements MetadataReader {
                 dialect.tableNamePattern(dataSourceInfo),
                 dialect.tableTypes())) {
             while (tables.next()) {
-                String schemaName = dialect.normalizeSchemaName(tables.getString("TABLE_SCHEM"));
-                String tableName = dialect.normalizeTableName(tables.getString("TABLE_NAME"));
+                String rawSchemaName = tables.getString("TABLE_SCHEM");
+                String rawTableName = tables.getString("TABLE_NAME");
+                String schemaName = dialect.normalizeSchemaName(rawSchemaName);
+                String tableName = dialect.normalizeTableName(rawTableName);
                 if (!dialect.shouldIncludeSchema(schemaName)
                         || !dialect.shouldIncludeTable(schemaName, tableName)
                         || !shouldReadSchema(schemaName, dataSourceInfo)
@@ -68,7 +70,7 @@ public abstract class AbstractJdbcMetadataReader implements MetadataReader {
                 }
                 SchemaMeta schemaMeta = databaseMeta.getSchemas().computeIfAbsent(schemaName, SchemaMeta::new);
                 TableMeta tableMeta = schemaMeta.getTables().computeIfAbsent(tableName, TableMeta::new);
-                loadColumns(metaData, dataSourceInfo, schemaName, tableName, tableMeta);
+                loadColumns(metaData, dataSourceInfo, rawSchemaName, rawTableName, tableMeta);
             }
         }
     }
