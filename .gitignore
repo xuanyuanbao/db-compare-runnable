@@ -1,5 +1,6 @@
 .idea/
 .gradle/
+.gradle-home/
 out/
 out-test/
 target/
