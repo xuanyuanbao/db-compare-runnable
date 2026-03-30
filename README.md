@@ -1,139 +1,132 @@
 # db-compare-runnable
 
-这是一个可直接运行的 Java 版数据库表结构对比项目骨架，而且这次不是空壳。
+一个基于 Spring Boot 的数据库表结构比对工具，当前主要用于：
 
-它包含两种运行方式：
+- 对比多个 DB2 源库与 openGauss 目标库的 schema / table / column 结构
+- 输出差异 CSV
+- 输出全量 Excel 明细，区分一致和不一致
+- 过滤数据库系统自带的 schema，只比对用户创建的对象
 
-1. **SNAPSHOT 模式**：直接读取 CSV 元数据快照，不需要任何第三方 JDBC 驱动，开箱就能跑。
-2. **JDBC 模式**：通过 `DatabaseMetaData` 读取 AS400 / DB2 / Gauss 元数据。这个模式能用于真实数据库，但你需要自行把对应厂商的 JDBC 驱动 jar 放到运行时 classpath。
+## 当前运行方式
 
-## 目录说明
+项目已经改成 Spring Boot + Gradle 方式运行，默认从 `src/main/resources/application.properties` 读取配置。
 
-- `src/main/java`：核心源码
-- `examples/demo`：可直接运行的演示数据
-- `examples/jdbc-template.properties`：真实 JDBC 配置模板
-- `scripts/build.sh`：JDK 直接编译脚本
-- `scripts/run-demo.sh`：一键跑演示
-
-## 一键跑演示
-
-前提：本机安装 JDK 17+。
+常用命令：
 
 ```bash
-cd db-compare-runnable
-./scripts/run-demo.sh
+./gradlew bootRun
+./gradlew test
+./gradlew clean build
 ```
 
-成功后会生成：
-
-- `build/reports/demo-compare-report.csv`
-- `build/reports/demo-compare-summary.txt`
-
-## 手动运行
-
-```bash
-cd db-compare-runnable
-./scripts/build.sh
-java -cp out com.example.dbcompare.app.CompareApplication examples/demo/demo.properties
-```
-
-## 真实 JDBC 模式
-
-1. 复制并修改 `examples/jdbc-template.properties`
-2. 准备驱动 jar
-3. 编译源码
-4. 运行时把驱动 jar 放进 classpath
-
-示例：
-
-```bash
-./scripts/build.sh
-java -cp "out:libs/*" com.example.dbcompare.app.CompareApplication examples/jdbc-template.properties
-```
-
-Windows：
+Windows:
 
 ```bat
-scripts\build.sh
-java -cp "out;libs/*" com.example.dbcompare.app.CompareApplication examples\jdbc-template.properties
+gradlew.bat bootRun
+gradlew.bat test
+gradlew.bat clean build
 ```
 
-## 配置说明
+如果你在 IDEA 中运行，直接启动 `CompareApplication` 即可。
 
-### 基础配置
+## 配置文件
 
-```properties
-source.count=2
-source.1.name=AS400_A
-source.1.type=AS400
-source.1.jdbcUrl=jdbc:as400://...
-source.1.username=...
-source.1.password=...
-source.1.driverClassName=com.ibm.as400.access.AS400JDBCDriver
+主配置文件：
 
-source.2.name=DB2_B
-source.2.type=DB2
-source.2.jdbcUrl=jdbc:db2://...
-source.2.username=...
-source.2.password=...
-source.2.driverClassName=com.ibm.db2.jcc.DB2Driver
+- `src/main/resources/application.properties`
 
-target.name=GAUSS
-target.type=GAUSS
-target.jdbcUrl=jdbc:postgresql://...
-target.username=...
-target.password=...
-target.driverClassName=org.postgresql.Driver
-```
+当前配置结构：
 
-### 映射规则
+- `dbcompare.sources[n]`：源库配置
+- `dbcompare.target`：目标库配置
+- `dbcompare.mappings[n]`：源库到目标 schema 的映射
+- `dbcompare.table-mappings[n]`：可选的表级覆盖映射
+- `dbcompare.options.*`：对比选项
+- `dbcompare.output.*`：输出路径
 
-```properties
-mapping.count=2
-mapping.1.sourceDatabaseName=AS400_A
-mapping.1.targetSchemaName=T_AS400_A
-mapping.2.sourceDatabaseName=DB2_B
-mapping.2.targetSchemaName=T_DB2_B
-```
+当前默认输出：
 
-### 表级覆盖映射
+- `build/reports/default-compare-report.csv`
+- `build/reports/default-compare-detail.xlsx`
+- `build/reports/default-compare-summary.txt`
 
-```properties
-tableMapping.count=1
-tableMapping.1.sourceDatabaseName=AS400_A
-tableMapping.1.sourceSchemaName=LEGACYA
-tableMapping.1.sourceTableName=OLD_TABLE
-tableMapping.1.targetSchemaName=T_AS400_A
-tableMapping.1.targetTableName=NEW_TABLE
-```
+## 对比范围
 
-### 可选过滤
+当前支持的数据库类型：
 
-```properties
-compare.includeSchemas=LEGACYA,LEGACYB
-compare.excludeTables=TMP_A,TMP_B
-```
+- `DB2`
+- `GAUSS`
+- `AS400`
+- `SNAPSHOT`
 
-## 当前支持的对比项
+当前对比项：
 
 - 表是否存在
 - 字段是否存在
 - 字段类型是否一致
-- 字段长度是否一致
+- 字段长度 / 精度是否一致
 - 默认值是否一致
 - nullable 是否一致
 
-## 说明
+另外，JDBC 模式下已经默认过滤系统 schema：
 
-这版代码是**能跑的完整版工程基础版**，但有一个必须说清楚的点：
+- DB2：如 `SYSCAT`、`SYSIBM`、`SYSTOOLS`
+- openGauss：如 `pg_*`、`information_schema`
+- AS400：如 `QSYS`、`QSYS2`、`QGPL`
 
-- **SNAPSHOT 模式**：我已经保证它可以直接跑。
-- **真实 AS400 / DB2 / Gauss JDBC 模式**：代码已补全，但由于厂商驱动通常有分发限制，我没有把这些驱动 jar 放进项目里。你本地补上驱动后即可运行。
+## 报表说明
 
-## 适合你下一步继续补的地方
+### CSV
 
-- 针对 AS400 / DB2 / Gauss 做更细的类型兼容规则
-- 增加 Excel 报告导出
-- 增加按单库 / 单 schema / 单表执行
-- 增加白名单 / 黑名单文件
-- 增加 Spring Boot 包装和 REST 接口
+CSV 只输出差异项。
+
+### Excel
+
+Excel 输出全量字段明细，包括：
+
+- 一致项
+- 不一致项
+- 目标缺表 / 缺字段
+
+并带有状态列：
+
+- `MATCH`
+- `MISMATCH`
+- `NOT_APPLICABLE`
+
+## 示例文件
+
+示例目录：
+
+- `examples/demo`
+- `examples/sql`
+
+其中：
+
+- `examples/demo` 保留了 snapshot 测试数据，主要用于测试和回归
+- `examples/sql` 提供了 DB2_A、DB2_B、openGauss 的建表和测试数据脚本
+
+## 项目结构
+
+主要目录：
+
+- `src/main/java`：核心代码
+- `src/main/resources`：Spring Boot 配置
+- `src/test/java`：测试代码
+- `examples/sql`：DB2 / openGauss 示例 SQL
+- `scripts`：简单脚本封装
+
+核心入口：
+
+- `src/main/java/com/example/dbcompare/app/CompareApplication.java`
+
+## 开发说明
+
+当前项目已经不再使用老的“手工 properties + out 目录 classpath 启动”方式，README 中如果你看到那种旧说明，可以认为已经过时。
+
+如果后续继续扩展，比较适合的方向有：
+
+- 更细的 DB2 / openGauss / AS400 类型兼容规则
+- 表级和字段级忽略规则
+- 更丰富的 Excel 样式和汇总页
+- 通过 profile 区分不同环境配置
