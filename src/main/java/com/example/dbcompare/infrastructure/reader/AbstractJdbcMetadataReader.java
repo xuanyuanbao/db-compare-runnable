@@ -8,16 +8,21 @@ import com.example.dbcompare.domain.model.SchemaMeta;
 import com.example.dbcompare.domain.model.TableMeta;
 import com.example.dbcompare.infrastructure.reader.dialect.JdbcMetadataDialect;
 import com.example.dbcompare.util.NameNormalizer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 
 public abstract class AbstractJdbcMetadataReader implements MetadataReader {
+    private static final Logger log = LoggerFactory.getLogger(AbstractJdbcMetadataReader.class);
+
     private final JdbcMetadataDialect dialect;
 
     protected AbstractJdbcMetadataReader(JdbcMetadataDialect dialect) {
@@ -54,6 +59,28 @@ public abstract class AbstractJdbcMetadataReader implements MetadataReader {
 
     protected void loadTables(DatabaseMetaData metaData, DataSourceInfo dataSourceInfo, DatabaseMeta databaseMeta,
                               CompareObjectType objectType) throws SQLException {
+        List<TableRef> tablesToLoad = collectTables(metaData, dataSourceInfo, objectType);
+        String objectLabel = objectType.name().toLowerCase();
+        log.info("Datasource {} matched {} {} objects for metadata loading",
+                dataSourceInfo.getSourceName(), tablesToLoad.size(), objectLabel);
+        for (int index = 0; index < tablesToLoad.size(); index++) {
+            TableRef tableRef = tablesToLoad.get(index);
+            log.info("Datasource {} loading {} metadata [{}/{}]: {}.{}",
+                    dataSourceInfo.getSourceName(),
+                    objectLabel,
+                    index + 1,
+                    tablesToLoad.size(),
+                    tableRef.schemaName(),
+                    tableRef.tableName());
+            SchemaMeta schemaMeta = databaseMeta.getSchemas().computeIfAbsent(tableRef.schemaName(), SchemaMeta::new);
+            TableMeta tableMeta = schemaMeta.getTables().computeIfAbsent(tableRef.tableName(), TableMeta::new);
+            loadColumns(metaData, dataSourceInfo, tableRef.rawSchemaName(), tableRef.rawTableName(), tableMeta);
+        }
+    }
+
+    private List<TableRef> collectTables(DatabaseMetaData metaData, DataSourceInfo dataSourceInfo,
+                                         CompareObjectType objectType) throws SQLException {
+        List<TableRef> tablesToLoad = new ArrayList<>();
         try (ResultSet tables = metaData.getTables(
                 dataSourceInfo.getCatalog(),
                 dialect.schemaPattern(dataSourceInfo),
@@ -70,11 +97,10 @@ public abstract class AbstractJdbcMetadataReader implements MetadataReader {
                         || !shouldReadTable(tableName, dataSourceInfo)) {
                     continue;
                 }
-                SchemaMeta schemaMeta = databaseMeta.getSchemas().computeIfAbsent(schemaName, SchemaMeta::new);
-                TableMeta tableMeta = schemaMeta.getTables().computeIfAbsent(tableName, TableMeta::new);
-                loadColumns(metaData, dataSourceInfo, rawSchemaName, rawTableName, tableMeta);
+                tablesToLoad.add(new TableRef(rawSchemaName, rawTableName, schemaName, tableName));
             }
         }
+        return tablesToLoad;
     }
 
     protected void loadColumns(DatabaseMetaData metaData, DataSourceInfo dataSourceInfo,
@@ -112,5 +138,8 @@ public abstract class AbstractJdbcMetadataReader implements MetadataReader {
             if (normalized != null && normalized.equals(NameNormalizer.normalize(include))) return true;
         }
         return false;
+    }
+
+    private record TableRef(String rawSchemaName, String rawTableName, String schemaName, String tableName) {
     }
 }
