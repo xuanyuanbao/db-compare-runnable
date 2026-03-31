@@ -34,8 +34,13 @@ public class CompareOrchestrator {
     }
 
     public List<DiffRecord> execute(CompareConfig compareConfig) {
-        Map<String, DatabaseMeta> sourceMetadata = metadataLoadService.loadSources(compareConfig.getSources(), compareConfig.getOptions().getSourceLoadThreads());
-        DatabaseMeta targetMetadata = metadataLoadService.loadTarget(compareConfig.getTarget());
+        Map<String, DatabaseMeta> sourceMetadata = metadataLoadService.loadSources(
+                compareConfig.getSources(),
+                compareConfig.getOptions().getSourceLoadThreads(),
+                compareConfig.getOptions().getObjectType());
+        DatabaseMeta targetMetadata = metadataLoadService.loadTarget(
+                compareConfig.getTarget(),
+                compareConfig.getOptions().getObjectType());
 
         List<DiffRecord> allDiffs = new ArrayList<>();
         List<ColumnComparisonRecord> allColumnRecords = new ArrayList<>();

@@ -1,5 +1,6 @@
 package com.example.dbcompare.service;
 
+import com.example.dbcompare.domain.enums.CompareObjectType;
 import com.example.dbcompare.domain.enums.DatabaseType;
 import com.example.dbcompare.domain.model.DataSourceInfo;
 import com.example.dbcompare.domain.model.DatabaseMeta;
@@ -25,13 +26,13 @@ public class MetadataLoadService {
         readers.put(DatabaseType.SNAPSHOT, new SnapshotMetadataReader());
     }
 
-    public Map<String, DatabaseMeta> loadSources(List<DataSourceInfo> sources, int threadCount) {
+    public Map<String, DatabaseMeta> loadSources(List<DataSourceInfo> sources, int threadCount, CompareObjectType objectType) {
         ExecutorService executor = Executors.newFixedThreadPool(Math.max(1, threadCount));
         try {
             Map<String, Future<DatabaseMeta>> futures = new LinkedHashMap<>();
             for (DataSourceInfo source : sources) {
                 MetadataReader reader = getReader(source.getType());
-                futures.put(source.getSourceName(), executor.submit(() -> reader.loadMetadata(source)));
+                futures.put(source.getSourceName(), executor.submit(() -> reader.loadMetadata(source, objectType)));
             }
             Map<String, DatabaseMeta> result = new LinkedHashMap<>();
             for (Map.Entry<String, Future<DatabaseMeta>> entry : futures.entrySet()) {
@@ -50,8 +51,8 @@ public class MetadataLoadService {
         }
     }
 
-    public DatabaseMeta loadTarget(DataSourceInfo target) {
-        return getReader(target.getType()).loadMetadata(target);
+    public DatabaseMeta loadTarget(DataSourceInfo target, CompareObjectType objectType) {
+        return getReader(target.getType()).loadMetadata(target, objectType);
     }
 
     private MetadataReader getReader(DatabaseType type) {

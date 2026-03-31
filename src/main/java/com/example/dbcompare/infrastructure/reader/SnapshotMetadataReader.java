@@ -1,5 +1,6 @@
 package com.example.dbcompare.infrastructure.reader;
 
+import com.example.dbcompare.domain.enums.CompareObjectType;
 import com.example.dbcompare.domain.model.ColumnMeta;
 import com.example.dbcompare.domain.model.DataSourceInfo;
 import com.example.dbcompare.domain.model.DatabaseMeta;
@@ -17,7 +18,7 @@ import java.util.List;
 
 public class SnapshotMetadataReader implements MetadataReader {
     @Override
-    public DatabaseMeta loadMetadata(DataSourceInfo dataSourceInfo) {
+    public DatabaseMeta loadMetadata(DataSourceInfo dataSourceInfo, CompareObjectType objectType) {
         Path path = Path.of(dataSourceInfo.getSnapshotFile());
         DatabaseMeta databaseMeta = new DatabaseMeta(dataSourceInfo.getSourceName());
         try (BufferedReader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) {

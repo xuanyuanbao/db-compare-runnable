@@ -1,6 +1,7 @@
 package com.example.dbcompare.tests;
 
 import com.example.dbcompare.config.ConfigLoader;
+import com.example.dbcompare.domain.enums.CompareObjectType;
 import com.example.dbcompare.domain.enums.DatabaseType;
 import com.example.dbcompare.domain.model.CompareConfig;
 
@@ -39,6 +40,7 @@ public final class ConfigLoaderTest {
         properties.setProperty("compare.options.compareNullable", "false");
         properties.setProperty("compare.options.compareDefaultValue", "false");
         properties.setProperty("compare.options.compareLength", "true");
+        properties.setProperty("compare.options.objectType", "view");
         properties.setProperty("compare.options.sourceLoadThreads", "2");
         properties.setProperty("output.csvPath", "build/reports/result.csv");
         properties.setProperty("output.summaryPath", "build/reports/summary.txt");
@@ -60,6 +62,8 @@ public final class ConfigLoaderTest {
                 "compare nullable option should honor explicit false");
         TestSupport.assertTrue(!config.getOptions().isCompareDefaultValue(),
                 "compare default option should honor explicit false");
+        TestSupport.assertEquals(CompareObjectType.VIEW, config.getOptions().getObjectType(),
+                "object type should be loaded from config");
         TestSupport.assertEquals(2, config.getOptions().getSourceLoadThreads(),
                 "source load thread count should be loaded");
         TestSupport.assertEquals("build/reports/result.csv", config.getOutput().getCsvPath(),

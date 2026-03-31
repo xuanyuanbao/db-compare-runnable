@@ -1,5 +1,6 @@
 package com.example.dbcompare.config;
 
+import com.example.dbcompare.domain.enums.CompareObjectType;
 import com.example.dbcompare.domain.enums.DatabaseType;
 import com.example.dbcompare.domain.model.CompareConfig;
 import com.example.dbcompare.domain.model.DataSourceInfo;
@@ -61,6 +62,8 @@ public class ConfigLoader {
         config.getOptions().setCompareDefaultValue(boolValue(properties, "compare.options.compareDefaultValue", true));
         config.getOptions().setCompareLength(boolValue(properties, "compare.options.compareLength", true));
         config.getOptions().setSourceLoadThreads(intValue(properties, "compare.options.sourceLoadThreads", 4));
+        config.getOptions().setObjectType(enumValue(properties, CompareObjectType.class, CompareObjectType.TABLE,
+                "compare.options.objectType", "compare.options.object-type"));
 
         String csvPath = properties.getProperty("output.csvPath");
         if (csvPath != null && !csvPath.isBlank()) config.getOutput().setCsvPath(csvPath.trim());
@@ -106,5 +109,15 @@ public class ConfigLoader {
     private int intValue(Properties properties, String key, int defaultValue) {
         String value = properties.getProperty(key);
         return value == null || value.isBlank() ? defaultValue : Integer.parseInt(value.trim());
+    }
+
+    private <T extends Enum<T>> T enumValue(Properties properties, Class<T> type, T defaultValue, String... keys) {
+        for (String key : keys) {
+            String value = properties.getProperty(key);
+            if (value != null && !value.isBlank()) {
+                return Enum.valueOf(type, value.trim().toUpperCase());
+            }
+        }
+        return defaultValue;
     }
 }

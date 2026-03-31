@@ -1,5 +1,6 @@
 package com.example.dbcompare.infrastructure.reader.dialect;
 
+import com.example.dbcompare.domain.enums.CompareObjectType;
 import com.example.dbcompare.domain.model.DataSourceInfo;
 import com.example.dbcompare.util.NameNormalizer;
 
@@ -15,8 +16,10 @@ public interface JdbcMetadataDialect {
         return "%";
     }
 
-    default String[] tableTypes() {
-        return new String[]{"TABLE", "VIEW"};
+    default String[] tableTypes(CompareObjectType objectType) {
+        return objectType == CompareObjectType.VIEW
+                ? new String[]{"VIEW"}
+                : new String[]{"TABLE"};
     }
 
     default String normalizeSchemaName(String schemaName) {

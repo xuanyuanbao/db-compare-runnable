@@ -1,5 +1,6 @@
 package com.example.dbcompare.infrastructure.reader;
 
+import com.example.dbcompare.domain.enums.CompareObjectType;
 import com.example.dbcompare.domain.model.ColumnMeta;
 import com.example.dbcompare.domain.model.DataSourceInfo;
 import com.example.dbcompare.domain.model.DatabaseMeta;
@@ -24,11 +25,11 @@ public abstract class AbstractJdbcMetadataReader implements MetadataReader {
     }
 
     @Override
-    public DatabaseMeta loadMetadata(DataSourceInfo dataSourceInfo) {
+    public DatabaseMeta loadMetadata(DataSourceInfo dataSourceInfo, CompareObjectType objectType) {
         DatabaseMeta databaseMeta = new DatabaseMeta(dataSourceInfo.getSourceName());
         loadDriverIfNecessary(dataSourceInfo);
         try (Connection connection = createConnection(dataSourceInfo)) {
-            loadTables(connection.getMetaData(), dataSourceInfo, databaseMeta);
+            loadTables(connection.getMetaData(), dataSourceInfo, databaseMeta, objectType);
         } catch (SQLException e) {
             throw new IllegalStateException("Failed to load metadata for " + dataSourceInfo.getSourceName(), e);
         }
@@ -51,12 +52,13 @@ public abstract class AbstractJdbcMetadataReader implements MetadataReader {
         }
     }
 
-    protected void loadTables(DatabaseMetaData metaData, DataSourceInfo dataSourceInfo, DatabaseMeta databaseMeta) throws SQLException {
+    protected void loadTables(DatabaseMetaData metaData, DataSourceInfo dataSourceInfo, DatabaseMeta databaseMeta,
+                              CompareObjectType objectType) throws SQLException {
         try (ResultSet tables = metaData.getTables(
                 dataSourceInfo.getCatalog(),
                 dialect.schemaPattern(dataSourceInfo),
                 dialect.tableNamePattern(dataSourceInfo),
-                dialect.tableTypes())) {
+                dialect.tableTypes(objectType))) {
             while (tables.next()) {
                 String rawSchemaName = tables.getString("TABLE_SCHEM");
                 String rawTableName = tables.getString("TABLE_NAME");
