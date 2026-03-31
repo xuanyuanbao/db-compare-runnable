@@ -55,6 +55,10 @@ public class MetadataLoadService {
         return getReader(target.getType()).loadMetadata(target, objectType);
     }
 
+    public DatabaseMeta loadSource(DataSourceInfo source, CompareObjectType objectType) {
+        return getReader(source.getType()).loadMetadata(source, objectType);
+    }
+
     private MetadataReader getReader(DatabaseType type) {
         MetadataReader reader = readers.get(type);
         if (reader == null) throw new IllegalArgumentException("Unsupported database type: " + type);

@@ -2,6 +2,7 @@ package com.example.dbcompare.app;
 
 import com.example.dbcompare.config.ConfigValidator;
 import com.example.dbcompare.config.DbCompareProperties;
+import com.example.dbcompare.domain.model.CompareSummary;
 import com.example.dbcompare.service.CompareOrchestrator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,8 +29,8 @@ public class CompareApplicationRunner implements ApplicationRunner {
     @Override
     public void run(ApplicationArguments args) {
         configValidator.validate(properties);
-        int diffCount = compareOrchestrator.execute(properties).size();
-        log.info("Compare finished. diffCount={}", diffCount);
+        CompareSummary summary = compareOrchestrator.execute(properties);
+        log.info("Compare finished. diffCount={}", summary.getDiffCount());
         log.info("CSV report: {}", properties.getOutput().getCsvPath());
         log.info("Excel report: {}", properties.getOutput().getExcelPath());
         log.info("Summary report: {}", properties.getOutput().getSummaryPath());

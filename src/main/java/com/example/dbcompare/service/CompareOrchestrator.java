@@ -6,10 +6,9 @@ import com.example.dbcompare.infrastructure.output.ExcelReportWriter;
 import com.example.dbcompare.infrastructure.output.SummaryReportWriter;
 import com.example.dbcompare.util.NameNormalizer;
 
+import java.io.IOException;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 public class CompareOrchestrator {
     private final MetadataLoadService metadataLoadService;
@@ -33,51 +32,47 @@ public class CompareOrchestrator {
         this.summaryReportWriter = summaryReportWriter;
     }
 
-    public List<DiffRecord> execute(CompareConfig compareConfig) {
-        Map<String, DatabaseMeta> sourceMetadata = metadataLoadService.loadSources(
-                compareConfig.getSources(),
-                compareConfig.getOptions().getSourceLoadThreads(),
-                compareConfig.getOptions().getObjectType());
+    public CompareSummary execute(CompareConfig compareConfig) {
         DatabaseMeta targetMetadata = metadataLoadService.loadTarget(
                 compareConfig.getTarget(),
                 compareConfig.getOptions().getObjectType());
 
-        List<DiffRecord> allDiffs = new ArrayList<>();
-        List<ColumnComparisonRecord> allColumnRecords = new ArrayList<>();
-        int sourceSchemaCount = 0;
-        int sourceTableCount = 0;
+        CompareSummary summary = CompareSummary.start(compareConfig.getSources().size());
+        try (CsvReportWriter.CsvReportSession csvSession = csvReportWriter.open(Path.of(compareConfig.getOutput().getCsvPath()));
+             ExcelReportWriter.ExcelReportSession excelSession = excelReportWriter.open(Path.of(compareConfig.getOutput().getExcelPath()))) {
 
-        for (DataSourceInfo sourceInfo : compareConfig.getSources()) {
-            DatabaseMeta sourceDbMeta = sourceMetadata.get(sourceInfo.getSourceName());
-            if (sourceDbMeta == null) continue;
+            for (DataSourceInfo sourceInfo : compareConfig.getSources()) {
+                DatabaseMeta sourceDbMeta = metadataLoadService.loadSource(sourceInfo, compareConfig.getOptions().getObjectType());
 
-            for (SchemaMeta sourceSchema : sourceDbMeta.getSchemas().values()) {
-                if (!shouldProcessSchema(compareConfig, sourceSchema.getSchemaName())) continue;
-                sourceSchemaCount++;
+                for (SchemaMeta sourceSchema : sourceDbMeta.getSchemas().values()) {
+                    if (!shouldProcessSchema(compareConfig, sourceSchema.getSchemaName())) continue;
+                    summary.incrementSourceSchemaCount();
 
-                for (TableMeta sourceTable : sourceSchema.getTables().values()) {
-                    if (!shouldProcessTable(compareConfig, sourceTable.getTableName())) continue;
-                    sourceTableCount++;
+                    for (TableMeta sourceTable : sourceSchema.getTables().values()) {
+                        if (!shouldProcessTable(compareConfig, sourceTable.getTableName())) continue;
+                        summary.incrementSourceTableCount();
 
-                    MappingService.TableTarget tableTarget = mappingService.findTargetTable(
-                            sourceInfo.getSourceName(), sourceSchema.getSchemaName(), sourceTable.getTableName());
-                    if (tableTarget == null) continue;
+                        MappingService.TableTarget tableTarget = mappingService.findTargetTable(
+                                sourceInfo.getSourceName(), sourceSchema.getSchemaName(), sourceTable.getTableName());
+                        if (tableTarget == null) continue;
 
-                    SchemaMeta targetSchema = targetMetadata.getSchemas().get(NameNormalizer.normalize(tableTarget.getSchemaName()));
-                    TableMeta targetTable = targetSchema == null ? null : targetSchema.getTables().get(NameNormalizer.normalize(tableTarget.getTableName()));
-                    TableComparisonResult comparisonResult = tableCompareService.compareDetailed(sourceInfo, sourceSchema.getSchemaName(), sourceTable,
-                            tableTarget.getSchemaName(), targetTable, compareConfig.getOptions());
-                    allDiffs.addAll(comparisonResult.getDiffs());
-                    allColumnRecords.addAll(comparisonResult.getColumnRecords());
+                        SchemaMeta targetSchema = targetMetadata.getSchemas().get(NameNormalizer.normalize(tableTarget.getSchemaName()));
+                        TableMeta targetTable = targetSchema == null ? null : targetSchema.getTables().get(NameNormalizer.normalize(tableTarget.getTableName()));
+                        TableComparisonResult comparisonResult = tableCompareService.compareDetailed(sourceInfo, sourceSchema.getSchemaName(), sourceTable,
+                                tableTarget.getSchemaName(), targetTable, compareConfig.getOptions());
+
+                        csvSession.append(comparisonResult.getDiffs());
+                        excelSession.append(comparisonResult.getColumnRecords());
+                        summary.recordDiffs(comparisonResult.getDiffs());
+                    }
                 }
             }
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to close report writers", e);
         }
 
-        csvReportWriter.write(Path.of(compareConfig.getOutput().getCsvPath()), allDiffs);
-        excelReportWriter.write(Path.of(compareConfig.getOutput().getExcelPath()), allColumnRecords);
-        CompareSummary summary = CompareSummary.from(allDiffs, compareConfig.getSources().size(), sourceSchemaCount, sourceTableCount);
         summaryReportWriter.write(Path.of(compareConfig.getOutput().getSummaryPath()), summary);
-        return allDiffs;
+        return summary;
     }
 
     private boolean shouldProcessSchema(CompareConfig compareConfig, String schemaName) {

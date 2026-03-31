@@ -3,6 +3,7 @@ package com.example.dbcompare.tests;
 import com.example.dbcompare.config.ConfigLoader;
 import com.example.dbcompare.config.ConfigValidator;
 import com.example.dbcompare.domain.model.CompareConfig;
+import com.example.dbcompare.domain.model.CompareSummary;
 import com.example.dbcompare.infrastructure.output.CsvReportWriter;
 import com.example.dbcompare.infrastructure.output.ExcelReportWriter;
 import com.example.dbcompare.infrastructure.output.SummaryReportWriter;
@@ -35,7 +36,8 @@ public final class CompareOrchestratorSmokeTest {
                 new ExcelReportWriter(),
                 new SummaryReportWriter());
 
-        TestSupport.assertEquals(4, orchestrator.execute(config).size(),
+        CompareSummary summary = orchestrator.execute(config);
+        TestSupport.assertEquals(4, summary.getDiffCount(),
                 "demo config should keep producing the same diff count");
         TestSupport.assertTrue(Files.exists(Path.of(config.getOutput().getCsvPath())),
                 "smoke test should create csv report");

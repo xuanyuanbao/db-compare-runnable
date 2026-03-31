@@ -13,16 +13,25 @@ public class CompareSummary {
     private int diffCount;
     private final Map<DiffType, Integer> diffTypeCount = new EnumMap<>(DiffType.class);
 
-    public static CompareSummary from(List<DiffRecord> diffRecords, int sourceCount, int sourceSchemaCount, int sourceTableCount) {
+    public static CompareSummary start(int sourceCount) {
         CompareSummary summary = new CompareSummary();
         summary.sourceCount = sourceCount;
-        summary.sourceSchemaCount = sourceSchemaCount;
-        summary.sourceTableCount = sourceTableCount;
-        summary.diffCount = diffRecords.size();
-        for (DiffRecord diffRecord : diffRecords) {
-            summary.diffTypeCount.merge(diffRecord.getDiffType(), 1, Integer::sum);
-        }
         return summary;
+    }
+
+    public void incrementSourceSchemaCount() {
+        sourceSchemaCount++;
+    }
+
+    public void incrementSourceTableCount() {
+        sourceTableCount++;
+    }
+
+    public void recordDiffs(List<DiffRecord> diffRecords) {
+        diffCount += diffRecords.size();
+        for (DiffRecord diffRecord : diffRecords) {
+            diffTypeCount.merge(diffRecord.getDiffType(), 1, Integer::sum);
+        }
     }
 
     public int getSourceCount() { return sourceCount; }
