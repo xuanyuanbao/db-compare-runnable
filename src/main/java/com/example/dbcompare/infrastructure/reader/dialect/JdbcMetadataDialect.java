@@ -16,7 +16,7 @@ public interface JdbcMetadataDialect {
     }
 
     default String[] tableTypes() {
-        return new String[]{"TABLE"};
+        return new String[]{"TABLE", "VIEW"};
     }
 
     default String normalizeSchemaName(String schemaName) {
@@ -51,3 +51,4 @@ public interface JdbcMetadataDialect {
         return String.valueOf(size);
     }
 }
+

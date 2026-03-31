@@ -13,6 +13,11 @@ public final class JdbcMetadataDialectTest {
         Db2JdbcMetadataDialect db2Dialect = new Db2JdbcMetadataDialect();
         GaussJdbcMetadataDialect gaussDialect = new GaussJdbcMetadataDialect();
 
+        TestSupport.assertEquals("TABLE", db2Dialect.tableTypes()[0],
+                "metadata lookup should still include TABLE objects");
+        TestSupport.assertEquals("VIEW", db2Dialect.tableTypes()[1],
+                "metadata lookup should also include VIEW objects");
+
         TestSupport.assertTrue(!as400Dialect.shouldIncludeSchema("QSYS2"),
                 "AS400 system schemas should be excluded");
         TestSupport.assertTrue(as400Dialect.shouldIncludeSchema("APP_LIB"),
