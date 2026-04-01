@@ -26,13 +26,13 @@ public class MetadataLoadService {
         readers.put(DatabaseType.SNAPSHOT, new SnapshotMetadataReader());
     }
 
-    public Map<String, DatabaseMeta> loadSources(List<DataSourceInfo> sources, int threadCount, CompareObjectType objectType) {
+    public Map<String, DatabaseMeta> loadSources(List<DataSourceInfo> sources, int threadCount) {
         ExecutorService executor = Executors.newFixedThreadPool(Math.max(1, threadCount));
         try {
             Map<String, Future<DatabaseMeta>> futures = new LinkedHashMap<>();
             for (DataSourceInfo source : sources) {
                 MetadataReader reader = getReader(source.getType());
-                futures.put(source.getSourceName(), executor.submit(() -> reader.loadMetadata(source, objectType)));
+                futures.put(source.getSourceName(), executor.submit(() -> reader.loadMetadata(source, CompareObjectType.TABLE)));
             }
             Map<String, DatabaseMeta> result = new LinkedHashMap<>();
             for (Map.Entry<String, Future<DatabaseMeta>> entry : futures.entrySet()) {
@@ -55,8 +55,8 @@ public class MetadataLoadService {
         return getReader(target.getType()).loadMetadata(target, objectType);
     }
 
-    public DatabaseMeta loadSource(DataSourceInfo source, CompareObjectType objectType) {
-        return getReader(source.getType()).loadMetadata(source, objectType);
+    public DatabaseMeta loadSource(DataSourceInfo source) {
+        return getReader(source.getType()).loadMetadata(source, CompareObjectType.TABLE);
     }
 
     private MetadataReader getReader(DatabaseType type) {

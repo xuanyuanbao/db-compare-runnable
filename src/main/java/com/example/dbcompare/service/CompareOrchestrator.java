@@ -42,7 +42,7 @@ public class CompareOrchestrator {
              ExcelReportWriter.ExcelReportSession excelSession = excelReportWriter.open(Path.of(compareConfig.getOutput().getExcelPath()))) {
 
             for (DataSourceInfo sourceInfo : compareConfig.getSources()) {
-                DatabaseMeta sourceDbMeta = metadataLoadService.loadSource(sourceInfo, compareConfig.getOptions().getObjectType());
+                DatabaseMeta sourceDbMeta = metadataLoadService.loadSource(sourceInfo);
 
                 for (SchemaMeta sourceSchema : sourceDbMeta.getSchemas().values()) {
                     if (!shouldProcessSchema(compareConfig, sourceSchema.getSchemaName())) continue;
