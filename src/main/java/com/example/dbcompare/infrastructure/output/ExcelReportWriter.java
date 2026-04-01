@@ -2,6 +2,7 @@ package com.example.dbcompare.infrastructure.output;
 
 import com.example.dbcompare.domain.enums.ComparisonStatus;
 import com.example.dbcompare.domain.model.ColumnComparisonRecord;
+import org.apache.poi.ss.SpreadsheetVersion;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.FillPatternType;
@@ -9,7 +10,6 @@ import org.apache.poi.ss.usermodel.Font;
 import org.apache.poi.ss.usermodel.HorizontalAlignment;
 import org.apache.poi.ss.usermodel.IndexedColors;
 import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.streaming.SXSSFSheet;
 import org.apache.poi.xssf.streaming.SXSSFWorkbook;
@@ -22,6 +22,7 @@ import java.nio.file.Path;
 import java.util.List;
 
 public class ExcelReportWriter {
+    private static final String DETAIL_SHEET_NAME = "Detail";
     private static final String[] HEADERS = {
             "sourceDatabase", "sourceSchema", "sourceTable", "targetSchema", "targetTable", "columnName",
             "sourceExists", "targetExists",
@@ -31,6 +32,19 @@ public class ExcelReportWriter {
             "sourceNullable", "targetNullable", "nullableStatus",
             "overallStatus", "diffTypes", "message"
     };
+
+    private final int maxRowsPerSheet;
+
+    public ExcelReportWriter() {
+        this(SpreadsheetVersion.EXCEL2007.getMaxRows());
+    }
+
+    public ExcelReportWriter(int maxRowsPerSheet) {
+        if (maxRowsPerSheet < 2) {
+            throw new IllegalArgumentException("maxRowsPerSheet must allow at least one data row");
+        }
+        this.maxRowsPerSheet = maxRowsPerSheet;
+    }
 
     public ExcelReportSession open(Path path) {
         try {
@@ -43,18 +57,7 @@ public class ExcelReportWriter {
             CellStyle matchStyle = createStatusStyle(workbook, IndexedColors.LIGHT_GREEN);
             CellStyle mismatchStyle = createStatusStyle(workbook, IndexedColors.ROSE);
             CellStyle naStyle = createStatusStyle(workbook, IndexedColors.GREY_25_PERCENT);
-
-            SXSSFSheet sheet = workbook.createSheet("Detail");
-            Row header = sheet.createRow(0);
-            for (int index = 0; index < HEADERS.length; index++) {
-                Cell cell = header.createCell(index);
-                cell.setCellValue(HEADERS[index]);
-                cell.setCellStyle(headerStyle);
-                sheet.setColumnWidth(index, defaultColumnWidth(index));
-            }
-            sheet.createFreezePane(0, 1);
-
-            return new ExcelReportSession(path, workbook, sheet, matchStyle, mismatchStyle, naStyle);
+            return new ExcelReportSession(path, workbook, headerStyle, matchStyle, mismatchStyle, naStyle, maxRowsPerSheet);
         } catch (IOException e) {
             throw new IllegalStateException("Failed to open Excel report: " + path, e);
         }
@@ -88,31 +91,39 @@ public class ExcelReportWriter {
         return style;
     }
 
-    public static class ExcelReportSession implements Closeable {
+    public class ExcelReportSession implements Closeable {
         private final Path path;
         private final SXSSFWorkbook workbook;
-        private final SXSSFSheet sheet;
+        private final CellStyle headerStyle;
         private final CellStyle matchStyle;
         private final CellStyle mismatchStyle;
         private final CellStyle naStyle;
+        private final int maxRowsPerSheet;
+
+        private SXSSFSheet sheet;
+        private int sheetSequence = 0;
         private int rowIndex = 1;
 
         private ExcelReportSession(Path path,
                                    SXSSFWorkbook workbook,
-                                   SXSSFSheet sheet,
+                                   CellStyle headerStyle,
                                    CellStyle matchStyle,
                                    CellStyle mismatchStyle,
-                                   CellStyle naStyle) {
+                                   CellStyle naStyle,
+                                   int maxRowsPerSheet) {
             this.path = path;
             this.workbook = workbook;
-            this.sheet = sheet;
+            this.headerStyle = headerStyle;
             this.matchStyle = matchStyle;
             this.mismatchStyle = mismatchStyle;
             this.naStyle = naStyle;
+            this.maxRowsPerSheet = maxRowsPerSheet;
+            this.sheet = createSheet();
         }
 
         public void append(List<ColumnComparisonRecord> records) {
             for (ColumnComparisonRecord record : records) {
+                ensureCapacityForNextRow();
                 Row row = sheet.createRow(rowIndex++);
                 int columnIndex = 0;
                 writeCell(row, columnIndex++, record.getSourceDatabaseName(), null);
@@ -143,13 +154,42 @@ public class ExcelReportWriter {
 
         @Override
         public void close() throws IOException {
-            sheet.setAutoFilter(new CellRangeAddress(0, Math.max(rowIndex - 1, 1), 0, HEADERS.length - 1));
+            applyAutoFilter(sheet, rowIndex);
             try (OutputStream outputStream = Files.newOutputStream(path)) {
                 workbook.write(outputStream);
             } finally {
                 workbook.dispose();
                 workbook.close();
             }
+        }
+
+        private void ensureCapacityForNextRow() {
+            if (rowIndex < maxRowsPerSheet) {
+                return;
+            }
+            applyAutoFilter(sheet, rowIndex);
+            sheet = createSheet();
+            rowIndex = 1;
+        }
+
+        private SXSSFSheet createSheet() {
+            String sheetName = sheetSequence == 0 ? DETAIL_SHEET_NAME : DETAIL_SHEET_NAME + "_" + (sheetSequence + 1);
+            sheetSequence++;
+            SXSSFSheet createdSheet = workbook.createSheet(sheetName);
+            Row header = createdSheet.createRow(0);
+            for (int index = 0; index < HEADERS.length; index++) {
+                Cell cell = header.createCell(index);
+                cell.setCellValue(HEADERS[index]);
+                cell.setCellStyle(headerStyle);
+                createdSheet.setColumnWidth(index, defaultColumnWidth(index));
+            }
+            createdSheet.createFreezePane(0, 1);
+            return createdSheet;
+        }
+
+        private void applyAutoFilter(SXSSFSheet targetSheet, int nextRowIndex) {
+            int lastRowIndex = Math.max(nextRowIndex - 1, 1);
+            targetSheet.setAutoFilter(new CellRangeAddress(0, lastRowIndex, 0, HEADERS.length - 1));
         }
 
         private void writeCell(Row row, int columnIndex, String value, CellStyle style) {
