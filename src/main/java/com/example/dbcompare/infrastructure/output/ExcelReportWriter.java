@@ -23,7 +23,7 @@ import java.util.List;
 
 public class ExcelReportWriter {
     private static final String DETAIL_SHEET_NAME = "Detail";
-    private static final String[] HEADERS = {
+    static final String[] DETAIL_HEADERS = {
             "sourceDatabase", "sourceSchema", "sourceTable", "targetSchema", "targetTable", "columnName",
             "sourceExists", "targetExists",
             "sourceType", "targetType", "typeStatus",
@@ -64,7 +64,7 @@ public class ExcelReportWriter {
     }
 
     private int defaultColumnWidth(int columnIndex) {
-        if (columnIndex == HEADERS.length - 1) {
+        if (columnIndex == DETAIL_HEADERS.length - 1) {
             return 60 * 256;
         }
         if (columnIndex >= 8 && columnIndex <= 20) {
@@ -177,9 +177,9 @@ public class ExcelReportWriter {
             sheetSequence++;
             SXSSFSheet createdSheet = workbook.createSheet(sheetName);
             Row header = createdSheet.createRow(0);
-            for (int index = 0; index < HEADERS.length; index++) {
+            for (int index = 0; index < DETAIL_HEADERS.length; index++) {
                 Cell cell = header.createCell(index);
-                cell.setCellValue(HEADERS[index]);
+                cell.setCellValue(DETAIL_HEADERS[index]);
                 cell.setCellStyle(headerStyle);
                 createdSheet.setColumnWidth(index, defaultColumnWidth(index));
             }
@@ -189,7 +189,7 @@ public class ExcelReportWriter {
 
         private void applyAutoFilter(SXSSFSheet targetSheet, int nextRowIndex) {
             int lastRowIndex = Math.max(nextRowIndex - 1, 1);
-            targetSheet.setAutoFilter(new CellRangeAddress(0, lastRowIndex, 0, HEADERS.length - 1));
+            targetSheet.setAutoFilter(new CellRangeAddress(0, lastRowIndex, 0, DETAIL_HEADERS.length - 1));
         }
 
         private void writeCell(Row row, int columnIndex, String value, CellStyle style) {

@@ -6,6 +6,7 @@ import com.example.dbcompare.domain.model.CompareConfig;
 import com.example.dbcompare.domain.model.CompareSummary;
 import com.example.dbcompare.infrastructure.output.CsvReportWriter;
 import com.example.dbcompare.infrastructure.output.ExcelReportWriter;
+import com.example.dbcompare.infrastructure.output.SqlReportWriter;
 import com.example.dbcompare.infrastructure.output.SummaryReportWriter;
 import com.example.dbcompare.service.CompareOrchestrator;
 import com.example.dbcompare.service.MappingService;
@@ -26,6 +27,7 @@ public final class CompareOrchestratorSmokeTest {
         Path tempDir = Files.createTempDirectory("dbcompare-tests-");
         config.getOutput().setCsvPath(tempDir.resolve("demo-report.csv").toString());
         config.getOutput().setExcelPath(tempDir.resolve("demo-detail.xlsx").toString());
+        config.getOutput().setSqlPath(tempDir.resolve("demo-detail.sql").toString());
         config.getOutput().setSummaryPath(tempDir.resolve("demo-summary.txt").toString());
 
         CompareOrchestrator orchestrator = new CompareOrchestrator(
@@ -34,6 +36,7 @@ public final class CompareOrchestratorSmokeTest {
                 new TableCompareService(),
                 new CsvReportWriter(),
                 new ExcelReportWriter(),
+                new SqlReportWriter(),
                 new SummaryReportWriter());
 
         CompareSummary summary = orchestrator.execute(config);
@@ -43,6 +46,8 @@ public final class CompareOrchestratorSmokeTest {
                 "smoke test should create csv report");
         TestSupport.assertTrue(Files.exists(Path.of(config.getOutput().getExcelPath())),
                 "smoke test should create excel report");
+        TestSupport.assertTrue(Files.exists(Path.of(config.getOutput().getSqlPath())),
+                "smoke test should create sql report");
         TestSupport.assertTrue(Files.readString(Path.of(config.getOutput().getSummaryPath())).contains("diffCount=4"),
                 "summary output should contain the expected diff count");
     }

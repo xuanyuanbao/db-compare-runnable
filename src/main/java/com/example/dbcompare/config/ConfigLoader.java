@@ -67,6 +67,12 @@ public class ConfigLoader {
 
         String csvPath = properties.getProperty("output.csvPath");
         if (csvPath != null && !csvPath.isBlank()) config.getOutput().setCsvPath(csvPath.trim());
+        String excelPath = properties.getProperty("output.excelPath");
+        if (excelPath != null && !excelPath.isBlank()) config.getOutput().setExcelPath(excelPath.trim());
+        String sqlPath = properties.getProperty("output.sqlPath");
+        if (sqlPath != null && !sqlPath.isBlank()) config.getOutput().setSqlPath(sqlPath.trim());
+        String sqlTableName = properties.getProperty("output.sqlTableName");
+        if (sqlTableName != null && !sqlTableName.isBlank()) config.getOutput().setSqlTableName(sqlTableName.trim());
         String summaryPath = properties.getProperty("output.summaryPath");
         if (summaryPath != null && !summaryPath.isBlank()) config.getOutput().setSummaryPath(summaryPath.trim());
 

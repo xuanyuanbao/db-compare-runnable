@@ -8,6 +8,7 @@ import com.example.dbcompare.domain.model.DataSourceInfo;
 import com.example.dbcompare.domain.model.DatabaseMeta;
 import com.example.dbcompare.infrastructure.output.CsvReportWriter;
 import com.example.dbcompare.infrastructure.output.ExcelReportWriter;
+import com.example.dbcompare.infrastructure.output.SqlReportWriter;
 import com.example.dbcompare.infrastructure.output.SummaryReportWriter;
 import com.example.dbcompare.service.CompareOrchestrator;
 import com.example.dbcompare.service.MappingService;
@@ -40,6 +41,7 @@ public final class CompareObjectTypeRoutingTest {
         Path tempDir = Files.createTempDirectory("dbcompare-object-type-");
         config.getOutput().setCsvPath(tempDir.resolve("report.csv").toString());
         config.getOutput().setExcelPath(tempDir.resolve("detail.xlsx").toString());
+        config.getOutput().setSqlPath(tempDir.resolve("detail.sql").toString());
         config.getOutput().setSummaryPath(tempDir.resolve("summary.txt").toString());
 
         RecordingMetadataLoadService metadataLoadService = new RecordingMetadataLoadService();
@@ -49,6 +51,7 @@ public final class CompareObjectTypeRoutingTest {
                 new TableCompareService(),
                 new CsvReportWriter(),
                 new ExcelReportWriter(),
+                new SqlReportWriter(),
                 new SummaryReportWriter());
 
         CompareSummary summary = orchestrator.execute(config);

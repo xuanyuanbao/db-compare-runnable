@@ -3,6 +3,7 @@ package com.example.dbcompare.service;
 import com.example.dbcompare.domain.model.*;
 import com.example.dbcompare.infrastructure.output.CsvReportWriter;
 import com.example.dbcompare.infrastructure.output.ExcelReportWriter;
+import com.example.dbcompare.infrastructure.output.SqlReportWriter;
 import com.example.dbcompare.infrastructure.output.SummaryReportWriter;
 import com.example.dbcompare.util.NameNormalizer;
 
@@ -16,6 +17,7 @@ public class CompareOrchestrator {
     private final TableCompareService tableCompareService;
     private final CsvReportWriter csvReportWriter;
     private final ExcelReportWriter excelReportWriter;
+    private final SqlReportWriter sqlReportWriter;
     private final SummaryReportWriter summaryReportWriter;
 
     public CompareOrchestrator(MetadataLoadService metadataLoadService,
@@ -23,12 +25,14 @@ public class CompareOrchestrator {
                                TableCompareService tableCompareService,
                                CsvReportWriter csvReportWriter,
                                ExcelReportWriter excelReportWriter,
+                               SqlReportWriter sqlReportWriter,
                                SummaryReportWriter summaryReportWriter) {
         this.metadataLoadService = metadataLoadService;
         this.mappingService = mappingService;
         this.tableCompareService = tableCompareService;
         this.csvReportWriter = csvReportWriter;
         this.excelReportWriter = excelReportWriter;
+        this.sqlReportWriter = sqlReportWriter;
         this.summaryReportWriter = summaryReportWriter;
     }
 
@@ -39,7 +43,10 @@ public class CompareOrchestrator {
 
         CompareSummary summary = CompareSummary.start(compareConfig.getSources().size());
         try (CsvReportWriter.CsvReportSession csvSession = csvReportWriter.open(Path.of(compareConfig.getOutput().getCsvPath()));
-             ExcelReportWriter.ExcelReportSession excelSession = excelReportWriter.open(Path.of(compareConfig.getOutput().getExcelPath()))) {
+             ExcelReportWriter.ExcelReportSession excelSession = excelReportWriter.open(Path.of(compareConfig.getOutput().getExcelPath()));
+             SqlReportWriter.SqlReportSession sqlSession = sqlReportWriter.open(
+                     Path.of(compareConfig.getOutput().getSqlPath()),
+                     compareConfig.getOutput().getSqlTableName())) {
 
             for (DataSourceInfo sourceInfo : compareConfig.getSources()) {
                 DatabaseMeta sourceDbMeta = metadataLoadService.loadSource(sourceInfo);
@@ -63,6 +70,7 @@ public class CompareOrchestrator {
 
                         csvSession.append(comparisonResult.getDiffs());
                         excelSession.append(comparisonResult.getColumnRecords());
+                        sqlSession.append(comparisonResult.getColumnRecords());
                         summary.recordDiffs(comparisonResult.getDiffs());
                     }
                 }

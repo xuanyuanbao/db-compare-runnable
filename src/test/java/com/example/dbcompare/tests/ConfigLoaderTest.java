@@ -43,6 +43,9 @@ public final class ConfigLoaderTest {
         properties.setProperty("compare.options.objectType", "view");
         properties.setProperty("compare.options.sourceLoadThreads", "2");
         properties.setProperty("output.csvPath", "build/reports/result.csv");
+        properties.setProperty("output.excelPath", "build/reports/result.xlsx");
+        properties.setProperty("output.sqlPath", "build/reports/result.sql");
+        properties.setProperty("output.sqlTableName", "compare_detail_tmp");
         properties.setProperty("output.summaryPath", "build/reports/summary.txt");
 
         CompareConfig config = new ConfigLoader().parse(properties);
@@ -68,6 +71,12 @@ public final class ConfigLoaderTest {
                 "source load thread count should be loaded");
         TestSupport.assertEquals("build/reports/result.csv", config.getOutput().getCsvPath(),
                 "csv output path should be loaded");
+        TestSupport.assertEquals("build/reports/result.xlsx", config.getOutput().getExcelPath(),
+                "excel output path should be loaded");
+        TestSupport.assertEquals("build/reports/result.sql", config.getOutput().getSqlPath(),
+                "sql output path should be loaded");
+        TestSupport.assertEquals("compare_detail_tmp", config.getOutput().getSqlTableName(),
+                "sql table name should be loaded");
         TestSupport.assertEquals("build/reports/summary.txt", config.getOutput().getSummaryPath(),
                 "summary output path should be loaded");
     }
