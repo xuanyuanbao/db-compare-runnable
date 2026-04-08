@@ -2,6 +2,7 @@ package com.example.dbcompare.domain.enums;
 
 public enum DiffType {
     SOURCE_TABLE_NOT_FOUND,
+    SOURCE_TABLE_AMBIGUOUS,
     TARGET_TABLE_NOT_FOUND,
     COLUMN_MISSING_IN_SOURCE,
     COLUMN_MISSING_IN_TARGET,

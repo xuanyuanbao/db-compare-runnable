@@ -5,6 +5,7 @@ import com.example.dbcompare.domain.model.ColumnMeta;
 import com.example.dbcompare.domain.model.DataSourceInfo;
 import com.example.dbcompare.domain.model.DatabaseMeta;
 import com.example.dbcompare.domain.model.SchemaMeta;
+import com.example.dbcompare.domain.model.SourceTableLoadResult;
 import com.example.dbcompare.domain.model.TableMeta;
 import com.example.dbcompare.infrastructure.reader.dialect.JdbcMetadataDialect;
 import com.example.dbcompare.util.NameNormalizer;
@@ -39,6 +40,24 @@ public abstract class AbstractJdbcMetadataReader implements MetadataReader {
             throw new IllegalStateException("Failed to load metadata for " + dataSourceInfo.getSourceName(), e);
         }
         return databaseMeta;
+    }
+
+    @Override
+    public SourceTableLoadResult loadTableMetadata(DataSourceInfo dataSourceInfo, String schemaName, String tableName) {
+        loadDriverIfNecessary(dataSourceInfo);
+        try (Connection connection = createConnection(dataSourceInfo)) {
+            ResolvedTableReference resolved = resolveTableReference(connection, dataSourceInfo, schemaName, tableName);
+            if (resolved.ambiguous()) {
+                return SourceTableLoadResult.ambiguous(
+                        dialect.normalizeSchemaName(resolved.schemaName()),
+                        dialect.normalizeTableName(resolved.tableName()),
+                        resolved.message());
+            }
+            return loadSingleTable(connection.getMetaData(), dataSourceInfo, resolved.schemaName(), resolved.tableName());
+        } catch (SQLException e) {
+            throw new IllegalStateException("Failed to load source table metadata for " + dataSourceInfo.getSourceName()
+                    + ": " + schemaName + "." + tableName, e);
+        }
     }
 
     protected Connection createConnection(DataSourceInfo dataSourceInfo) throws SQLException {
@@ -78,6 +97,43 @@ public abstract class AbstractJdbcMetadataReader implements MetadataReader {
         }
     }
 
+    private SourceTableLoadResult loadSingleTable(DatabaseMetaData metaData,
+                                                  DataSourceInfo dataSourceInfo,
+                                                  String schemaName,
+                                                  String tableName) throws SQLException {
+        String normalizedTableName = dialect.normalizeTableName(tableName);
+        String normalizedSchemaName = dialect.normalizeSchemaName(schemaName);
+        log.info("Datasource {} loading single table metadata: {}.{}",
+                dataSourceInfo.getSourceName(),
+                normalizedSchemaName == null ? "<AUTO>" : normalizedSchemaName,
+                normalizedTableName);
+        TableMeta tableMeta = new TableMeta(normalizedTableName);
+        String actualSchemaName = null;
+        try (ResultSet columns = metaData.getColumns(dataSourceInfo.getCatalog(), schemaName, tableName, "%")) {
+            while (columns.next()) {
+                String rawSchemaName = columns.getString("TABLE_SCHEM");
+                String currentSchemaName = dialect.normalizeSchemaName(rawSchemaName);
+                if (!dialect.shouldIncludeSchema(currentSchemaName)
+                        || !dialect.shouldIncludeTable(currentSchemaName, normalizedTableName)
+                        || !shouldReadSchema(currentSchemaName, dataSourceInfo)
+                        || !shouldReadTable(normalizedTableName, dataSourceInfo)) {
+                    continue;
+                }
+                if (actualSchemaName == null) {
+                    actualSchemaName = currentSchemaName;
+                } else if (!actualSchemaName.equals(currentSchemaName)) {
+                    return SourceTableLoadResult.ambiguous(actualSchemaName, normalizedTableName,
+                            "Multiple source schemas matched the same table name: " + actualSchemaName + ", " + currentSchemaName);
+                }
+                appendColumn(columns, tableMeta);
+            }
+        }
+        if (tableMeta.getColumns().isEmpty()) {
+            return SourceTableLoadResult.missing(normalizedSchemaName, normalizedTableName, "Source table not found");
+        }
+        return SourceTableLoadResult.found(actualSchemaName == null ? normalizedSchemaName : actualSchemaName, normalizedTableName, tableMeta);
+    }
+
     private List<TableRef> collectTables(DatabaseMetaData metaData, DataSourceInfo dataSourceInfo,
                                          CompareObjectType objectType) throws SQLException {
         List<TableRef> tablesToLoad = new ArrayList<>();
@@ -103,24 +159,46 @@ public abstract class AbstractJdbcMetadataReader implements MetadataReader {
         return tablesToLoad;
     }
 
+    protected ResolvedTableReference resolveTableReference(Connection connection,
+                                                           DataSourceInfo dataSourceInfo,
+                                                           String schemaName,
+                                                           String tableName) {
+        String preferredSchema = schemaName;
+        if ((preferredSchema == null || preferredSchema.isBlank()) && dataSourceInfo.getSchema() != null && !dataSourceInfo.getSchema().isBlank()) {
+            preferredSchema = dataSourceInfo.getSchema();
+        }
+        if ((preferredSchema == null || preferredSchema.isBlank()) && dataSourceInfo.getIncludeSchemas().size() == 1) {
+            preferredSchema = dataSourceInfo.getIncludeSchemas().get(0);
+        }
+        return new ResolvedTableReference(preferredSchema, tableName, false, null);
+    }
+
     protected void loadColumns(DatabaseMetaData metaData, DataSourceInfo dataSourceInfo,
                                String schemaName, String tableName, TableMeta tableMeta) throws SQLException {
         try (ResultSet columns = metaData.getColumns(dataSourceInfo.getCatalog(), schemaName, tableName, "%")) {
             while (columns.next()) {
-                ColumnMeta columnMeta = new ColumnMeta();
-                String columnName = dialect.normalizeColumnName(columns.getString("COLUMN_NAME"));
-                columnMeta.setColumnName(columnName);
-                columnMeta.setDataType(columns.getString("TYPE_NAME"));
-                columnMeta.setLength(dialect.buildLength(columns));
-                columnMeta.setNullable(columns.getString("IS_NULLABLE"));
-                columnMeta.setDefaultValue(columns.getString("COLUMN_DEF"));
-                columnMeta.setOrdinalPosition(columns.getInt("ORDINAL_POSITION"));
-                tableMeta.getColumns().put(columnName, columnMeta);
+                appendColumn(columns, tableMeta);
             }
         }
     }
 
+    private void appendColumn(ResultSet columns, TableMeta tableMeta) throws SQLException {
+        ColumnMeta columnMeta = new ColumnMeta();
+        String columnName = dialect.normalizeColumnName(columns.getString("COLUMN_NAME"));
+        columnMeta.setColumnName(columnName);
+        columnMeta.setDataType(columns.getString("TYPE_NAME"));
+        columnMeta.setLength(dialect.buildLength(columns));
+        columnMeta.setNullable(columns.getString("IS_NULLABLE"));
+        columnMeta.setDefaultValue(columns.getString("COLUMN_DEF"));
+        columnMeta.setOrdinalPosition(columns.getInt("ORDINAL_POSITION"));
+        tableMeta.getColumns().put(columnName, columnMeta);
+    }
+
     protected boolean shouldReadSchema(String schemaName, DataSourceInfo source) {
+        String forcedSchema = NameNormalizer.normalize(source.getSchema());
+        if (forcedSchema != null && !forcedSchema.equals(NameNormalizer.normalize(schemaName))) {
+            return false;
+        }
         return matches(schemaName, source.getIncludeSchemas(), source.getExcludeSchemas());
     }
 
@@ -138,6 +216,9 @@ public abstract class AbstractJdbcMetadataReader implements MetadataReader {
             if (normalized != null && normalized.equals(NameNormalizer.normalize(include))) return true;
         }
         return false;
+    }
+
+    protected record ResolvedTableReference(String schemaName, String tableName, boolean ambiguous, String message) {
     }
 
     private record TableRef(String rawSchemaName, String rawTableName, String schemaName, String tableName) {

@@ -1,9 +1,12 @@
 package com.example.dbcompare.domain.model;
 
+import com.example.dbcompare.domain.enums.CompareMode;
+
 import java.util.ArrayList;
 import java.util.List;
 
 public class CompareConfig {
+    private CompareMode mode = CompareMode.FULL_SCAN;
     private final List<DataSourceInfo> sources = new ArrayList<>();
     private DataSourceInfo target;
     private final List<SchemaMapping> mappings = new ArrayList<>();
@@ -15,6 +18,8 @@ public class CompareConfig {
     private final CompareOptions options = new CompareOptions();
     private final OutputConfig output = new OutputConfig();
 
+    public CompareMode getMode() { return mode; }
+    public void setMode(CompareMode mode) { this.mode = mode == null ? CompareMode.FULL_SCAN : mode; }
     public List<DataSourceInfo> getSources() { return sources; }
     public DataSourceInfo getTarget() { return target; }
     public void setTarget(DataSourceInfo target) { this.target = target; }

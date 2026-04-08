@@ -15,7 +15,6 @@ import com.example.dbcompare.util.TypeNormalizer;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 
 public class TableCompareService {
@@ -83,6 +82,21 @@ public class TableCompareService {
             result.getColumnRecords().add(compareExistingColumn(result, sourceInfo, sourceSchema, sourceTable.getTableName(),
                     targetSchema, targetTable.getTableName(), columnName, sourceColumn, targetColumn, options));
         }
+        return result;
+    }
+
+    public TableComparisonResult buildSourceIssueResult(DataSourceInfo sourceInfo,
+                                                        String sourceSchema,
+                                                        String sourceTableName,
+                                                        String targetSchema,
+                                                        String targetTableName,
+                                                        DiffType diffType,
+                                                        String message) {
+        TableComparisonResult result = new TableComparisonResult();
+        result.getDiffs().add(buildTableDiff(sourceInfo.getSourceName(), sourceSchema, sourceTableName, targetSchema,
+                targetTableName, diffType, null, null, message));
+        result.getColumnRecords().add(buildTableMissingRow(sourceInfo, sourceSchema, sourceTableName, targetSchema,
+                targetTableName, false, true, diffType, message));
         return result;
     }
 

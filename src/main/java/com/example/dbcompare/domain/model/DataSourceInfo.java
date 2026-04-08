@@ -13,6 +13,8 @@ public class DataSourceInfo {
     private String password;
     private String driverClassName;
     private String catalog;
+    private String schema;
+    private boolean viewOnly;
     private String snapshotFile;
     private final List<String> includeSchemas = new ArrayList<>();
     private final List<String> excludeSchemas = new ArrayList<>();
@@ -33,6 +35,10 @@ public class DataSourceInfo {
     public void setDriverClassName(String driverClassName) { this.driverClassName = driverClassName; }
     public String getCatalog() { return catalog; }
     public void setCatalog(String catalog) { this.catalog = catalog; }
+    public String getSchema() { return schema; }
+    public void setSchema(String schema) { this.schema = schema; }
+    public boolean isViewOnly() { return viewOnly; }
+    public void setViewOnly(boolean viewOnly) { this.viewOnly = viewOnly; }
     public String getSnapshotFile() { return snapshotFile; }
     public void setSnapshotFile(String snapshotFile) { this.snapshotFile = snapshotFile; }
     public List<String> getIncludeSchemas() { return includeSchemas; }

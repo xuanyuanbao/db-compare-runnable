@@ -4,6 +4,7 @@ import com.example.dbcompare.domain.enums.CompareObjectType;
 import com.example.dbcompare.domain.enums.DatabaseType;
 import com.example.dbcompare.domain.model.DataSourceInfo;
 import com.example.dbcompare.domain.model.DatabaseMeta;
+import com.example.dbcompare.domain.model.SourceTableLoadResult;
 import com.example.dbcompare.infrastructure.reader.As400MetadataReader;
 import com.example.dbcompare.infrastructure.reader.Db2MetadataReader;
 import com.example.dbcompare.infrastructure.reader.GaussMetadataReader;
@@ -57,6 +58,10 @@ public class MetadataLoadService {
 
     public DatabaseMeta loadSource(DataSourceInfo source) {
         return getReader(source.getType()).loadMetadata(source, CompareObjectType.TABLE);
+    }
+
+    public SourceTableLoadResult loadSourceTable(DataSourceInfo source, String schemaName, String tableName) {
+        return getReader(source.getType()).loadTableMetadata(source, schemaName, tableName);
     }
 
     private MetadataReader getReader(DatabaseType type) {

@@ -1,6 +1,7 @@
 package com.example.dbcompare.tests;
 
 import com.example.dbcompare.config.ConfigLoader;
+import com.example.dbcompare.domain.enums.CompareMode;
 import com.example.dbcompare.domain.enums.CompareObjectType;
 import com.example.dbcompare.domain.enums.DatabaseType;
 import com.example.dbcompare.domain.model.CompareConfig;
@@ -13,15 +14,18 @@ public final class ConfigLoaderTest {
 
     public static void run() {
         Properties properties = new Properties();
+        properties.setProperty("mode", "target_driven");
         properties.setProperty("source.count", "1");
         properties.setProperty("source.1.name", "AS400_A");
         properties.setProperty("source.1.type", "snapshot");
+        properties.setProperty("source.1.schema", "LEGACY_A");
         properties.setProperty("source.1.snapshotFile", "examples/demo/source_as400_1.csv");
         properties.setProperty("source.1.includeSchemas", "LEGACY_A, LEGACY_B");
         properties.setProperty("source.1.excludeTables", "TMP_A");
 
         properties.setProperty("target.name", "GAUSS");
         properties.setProperty("target.type", "SNAPSHOT");
+        properties.setProperty("target.viewOnly", "true");
         properties.setProperty("target.snapshotFile", "examples/demo/gauss_target.csv");
 
         properties.setProperty("mapping.count", "1");
@@ -50,13 +54,19 @@ public final class ConfigLoaderTest {
 
         CompareConfig config = new ConfigLoader().parse(properties);
 
+        TestSupport.assertEquals(CompareMode.TARGET_DRIVEN, config.getMode(),
+                "compare mode should be loaded from config");
         TestSupport.assertEquals(1, config.getSources().size(), "source count should be loaded");
         TestSupport.assertEquals(DatabaseType.SNAPSHOT, config.getSources().get(0).getType(),
                 "source type should be parsed case-insensitively");
+        TestSupport.assertEquals("LEGACY_A", config.getSources().get(0).getSchema(),
+                "source schema should be loaded");
         TestSupport.assertEquals("examples/demo/source_as400_1.csv", config.getSources().get(0).getSnapshotFile(),
                 "source snapshot path should be loaded");
         TestSupport.assertEquals(2, config.getSources().get(0).getIncludeSchemas().size(),
                 "source include schemas should be split");
+        TestSupport.assertTrue(config.getTarget().isViewOnly(),
+                "target viewOnly should be loaded");
         TestSupport.assertEquals(1, config.getMappings().size(), "schema mapping count should be loaded");
         TestSupport.assertEquals(1, config.getTableMappings().size(), "table mapping count should be loaded");
         TestSupport.assertEquals(1, config.getIncludeSchemas().size(), "global include schemas should be loaded");

@@ -1,5 +1,6 @@
 package com.example.dbcompare.config;
 
+import com.example.dbcompare.domain.enums.CompareMode;
 import com.example.dbcompare.domain.enums.CompareObjectType;
 import com.example.dbcompare.domain.enums.DatabaseType;
 import com.example.dbcompare.domain.model.CompareConfig;
@@ -26,6 +27,8 @@ public class ConfigLoader {
 
     public CompareConfig parse(Properties properties) {
         CompareConfig config = new CompareConfig();
+        config.setMode(enumValue(properties, CompareMode.class, CompareMode.FULL_SCAN,
+                "compare.mode", "mode"));
 
         int sourceCount = intValue(properties, "source.count", 0);
         for (int i = 1; i <= sourceCount; i++) {
@@ -91,6 +94,8 @@ public class ConfigLoader {
         dataSourceInfo.setPassword(properties.getProperty(prefix + "password"));
         dataSourceInfo.setDriverClassName(properties.getProperty(prefix + "driverClassName"));
         dataSourceInfo.setCatalog(properties.getProperty(prefix + "catalog"));
+        dataSourceInfo.setSchema(properties.getProperty(prefix + "schema"));
+        dataSourceInfo.setViewOnly(boolValue(properties, prefix + "viewOnly", false));
         dataSourceInfo.setSnapshotFile(properties.getProperty(prefix + "snapshotFile"));
         splitToList(properties.getProperty(prefix + "includeSchemas"), dataSourceInfo.getIncludeSchemas());
         splitToList(properties.getProperty(prefix + "excludeSchemas"), dataSourceInfo.getExcludeSchemas());

@@ -36,6 +36,16 @@ public final class MappingServiceTest {
         TestSupport.assertEquals("CUSTOMER", fallback.getTableName(),
                 "fallback should preserve normalized table name");
 
+        MappingService.SourceTarget reverse = mappingService.findSourceForTarget("MAPPED_SCHEMA", "NEW_TABLE");
+        TestSupport.assertEquals("SOURCE_A", reverse.getSourceDatabaseName(),
+                "reverse table mapping should resolve source database");
+        TestSupport.assertEquals("LEGACY_A", reverse.getSourceSchemaName(),
+                "reverse table mapping should resolve source schema");
+        TestSupport.assertEquals("OLD_TABLE", reverse.getSourceTableName(),
+                "reverse table mapping should resolve source table");
+        TestSupport.assertEquals("SOURCE_A", mappingService.findSourceDatabaseByTargetSchema("TARGET_SCHEMA"),
+                "reverse schema mapping should resolve source database");
+
         TestSupport.assertNull(mappingService.findTargetTable("UNKNOWN", "A", "B"),
                 "unknown source should not resolve to a target table");
     }
