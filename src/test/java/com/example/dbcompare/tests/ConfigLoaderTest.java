@@ -22,6 +22,7 @@ public final class ConfigLoaderTest {
         properties.setProperty("source.1.snapshotFile", "examples/demo/source_as400_1.csv");
         properties.setProperty("source.1.includeSchemas", "LEGACY_A, LEGACY_B");
         properties.setProperty("source.1.excludeTables", "TMP_A");
+        properties.setProperty("source.1.driveClassName", "com.ibm.as400.access.AS400JDBCDriver");
 
         properties.setProperty("target.name", "GAUSS");
         properties.setProperty("target.type", "SNAPSHOT");
@@ -61,6 +62,9 @@ public final class ConfigLoaderTest {
                 "source type should be parsed case-insensitively");
         TestSupport.assertEquals("LEGACY_A", config.getSources().get(0).getSchema(),
                 "source schema should be loaded");
+        TestSupport.assertEquals("com.ibm.as400.access.AS400JDBCDriver",
+                config.getSources().get(0).getDriverClassName(),
+                "legacy driveClassName key should map to driverClassName");
         TestSupport.assertEquals("examples/demo/source_as400_1.csv", config.getSources().get(0).getSnapshotFile(),
                 "source snapshot path should be loaded");
         TestSupport.assertEquals(2, config.getSources().get(0).getIncludeSchemas().size(),

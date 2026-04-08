@@ -1,11 +1,13 @@
 # db-compare-runnable
 
-一个基于 Spring Boot + Gradle 的数据库结构比对工具，当前支持两种执行模式：
+一个基于 Spring Boot + Gradle 的数据库结构比对工具，支持多个源库与一个目标库之间的 schema、table、view、column 结构比对。
 
-- `FULL_SCAN`：旧模式，先加载源库完整元数据，再与目标库做结构比对
-- `TARGET_DRIVEN`：新模式，以目标库 View 为驱动，只按任务逐张加载源表，避免全库扫描
+当前支持两种执行模式：
 
-当前项目默认采用：
+- `FULL_SCAN`：先加载源库完整元数据，再与目标库做结构比对。
+- `TARGET_DRIVEN`：以目标库对象为驱动，只按任务逐张加载源表，避免全库扫描带来的高内存占用。
+
+当前默认配置：
 
 - `dbcompare.mode=TARGET_DRIVEN`
 - `dbcompare.target.view-only=true`
@@ -13,12 +15,12 @@
 ## 当前能力
 
 - 对比多个源库和一个目标库的 schema / table / column 结构
+- 目标驱动模式下按单表精准加载源库元数据
+- 过滤数据库系统自带 schema，只比对用户对象
+- 支持 AS400 library list 解析
 - 输出差异 CSV
 - 输出全量 Excel 明细
 - 输出可直接导入数据库的 SQL 明细
-- 过滤数据库系统自带的 schema，只对比用户创建对象
-- 支持目标驱动模式下的单表精准加载
-- 支持 AS400 的 library list 解析
 
 ## 运行方式
 
@@ -44,6 +46,20 @@ gradlew.bat clean build
 
 - `src/main/java/com/example/dbcompare/app/CompareApplication.java`
 
+## 驱动依赖
+
+当前 Gradle 已内置以下 JDBC 驱动依赖：
+
+- DB2：`com.ibm.db2:jcc:11.5.9.0`
+- AS400：`net.sf.jt400:jt400:21.0.6`
+- openGauss / PostgreSQL：`org.postgresql:postgresql:42.7.3`
+
+如果你在配置文件里显式指定驱动类，可使用：
+
+- DB2：`com.ibm.db2.jcc.DB2Driver`
+- AS400：`com.ibm.as400.access.AS400JDBCDriver`
+- openGauss：`org.postgresql.Driver`
+
 ## 配置说明
 
 主配置文件：
@@ -62,8 +78,12 @@ gradlew.bat clean build
 
 重点配置项：
 
+- `dbcompare.sources[n].driver-class-name`
+  - 源库 JDBC 驱动类名
+- `dbcompare.target.driver-class-name`
+  - 目标库 JDBC 驱动类名
 - `dbcompare.target.view-only=true`
-  - 目标驱动模式下只加载目标 View
+  - 目标驱动模式下只加载目标 view
 - `dbcompare.sources[n].schema`
   - 指定源库默认 schema，便于单表精准查询
 - `dbcompare.output.csv-path`
@@ -72,21 +92,26 @@ gradlew.bat clean build
 - `dbcompare.output.sql-table-name`
 - `dbcompare.output.summary-path`
 
+兼容说明：
+
+- 标准配置项是 `driver-class-name`
+- 旧配置里如果误写成 `drive-class-name`，程序仍会兼容识别
+
 ## Target-Driven 模式
 
-`TARGET_DRIVEN` 模式的核心思路是：
+`TARGET_DRIVEN` 模式的核心流程：
 
-1. 加载目标库的 View 元数据
-2. 根据目标 schema 反向找到源库
-3. 根据表级 mapping 或 View 名解析出源表名
+1. 加载目标库的 view 元数据
+2. 根据目标 schema 反向定位源库
+3. 根据表级 mapping 或 view 名解析出源表名
 4. 对源库执行单表元数据加载
 5. 执行结构比对并输出结果
 
-这个模式的目标是避免：
+这个模式主要用于：
 
-- 全量加载所有源库表结构
-- 多源库情况下的高内存占用
-- 无映射表的无效扫描
+- 避免一次性加载多个源库的全部表结构
+- 降低多源库场景下的堆内存占用
+- 只聚焦真实参与映射的对象
 
 ## AS400 特殊处理
 
@@ -110,7 +135,7 @@ gradlew.bat clean build
 
 - 源库固定按 `TABLE` 加载
 - 目标库可按配置选择 `TABLE` 或 `VIEW`
-- 在 `TARGET_DRIVEN` + `target.view-only=true` 下，目标库按 `VIEW` 驱动
+- 在 `TARGET_DRIVEN + target.view-only=true` 下，目标库按 `VIEW` 驱动
 
 系统 schema 过滤：
 
@@ -188,25 +213,26 @@ SQL 输出与 Excel 明细保持同一套列结构。
 - `src/test/java`：测试代码
 - `examples/sql`：示例 SQL
 - `scripts`：简单脚本封装
-- `db_compare_requirements.md`：本次 target-driven 改造需求文档
+- `db_compare_requirements.md`：需求文档
 
 核心入口：
 
 - `src/main/java/com/example/dbcompare/app/CompareApplication.java`
 
-## 已补充的测试
+## 测试覆盖
 
-这次改造新增或更新了以下测试覆盖：
+当前已覆盖：
 
 - 目标驱动编排模式
 - View 名解析
 - 反向 mapping
 - 新配置项解析
-- 既有 Excel / SQL 导出能力
+- Excel / SQL 导出能力
+- 驱动配置兼容解析
 
 ## 后续可继续增强的方向
 
 - 从目标 View definition 中更完整地解析真实 base table
 - 针对 DB2 / AS400 的单表查询进一步做数据库专用 SQL 优化
-- 将 target-driven 任务规划结果输出为单独的审计报表
+- 将 target-driven 任务规划结果输出为单独审计报表
 - 对超大结果集按 schema 或 source database 自动拆分输出文件

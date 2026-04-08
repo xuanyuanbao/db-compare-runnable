@@ -92,7 +92,10 @@ public class ConfigLoader {
         dataSourceInfo.setJdbcUrl(properties.getProperty(prefix + "jdbcUrl"));
         dataSourceInfo.setUsername(properties.getProperty(prefix + "username"));
         dataSourceInfo.setPassword(properties.getProperty(prefix + "password"));
-        dataSourceInfo.setDriverClassName(properties.getProperty(prefix + "driverClassName"));
+        String driverClassName = firstNonBlank(
+                properties.getProperty(prefix + "driverClassName"),
+                properties.getProperty(prefix + "driveClassName"));
+        dataSourceInfo.setDriverClassName(driverClassName);
         dataSourceInfo.setCatalog(properties.getProperty(prefix + "catalog"));
         dataSourceInfo.setSchema(properties.getProperty(prefix + "schema"));
         dataSourceInfo.setViewOnly(boolValue(properties, prefix + "viewOnly", false));
@@ -102,6 +105,15 @@ public class ConfigLoader {
         splitToList(properties.getProperty(prefix + "includeTables"), dataSourceInfo.getIncludeTables());
         splitToList(properties.getProperty(prefix + "excludeTables"), dataSourceInfo.getExcludeTables());
         return dataSourceInfo;
+    }
+
+    private String firstNonBlank(String... values) {
+        for (String value : values) {
+            if (value != null && !value.isBlank()) {
+                return value.trim();
+            }
+        }
+        return null;
     }
 
     private void splitToList(String raw, java.util.List<String> out) {

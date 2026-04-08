@@ -12,6 +12,7 @@ public class DataSourceInfo {
     private String username;
     private String password;
     private String driverClassName;
+    private String driveClassName;
     private String catalog;
     private String schema;
     private boolean viewOnly;
@@ -31,8 +32,12 @@ public class DataSourceInfo {
     public void setUsername(String username) { this.username = username; }
     public String getPassword() { return password; }
     public void setPassword(String password) { this.password = password; }
-    public String getDriverClassName() { return driverClassName; }
+    public String getDriverClassName() {
+        return driverClassName == null || driverClassName.isBlank() ? driveClassName : driverClassName;
+    }
     public void setDriverClassName(String driverClassName) { this.driverClassName = driverClassName; }
+    public String getDriveClassName() { return driveClassName; }
+    public void setDriveClassName(String driveClassName) { this.driveClassName = driveClassName; }
     public String getCatalog() { return catalog; }
     public void setCatalog(String catalog) { this.catalog = catalog; }
     public String getSchema() { return schema; }
