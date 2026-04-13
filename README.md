@@ -199,12 +199,21 @@ CSV 只输出差异项。
 
 ### SQL
 
-SQL 输出与明细 Excel 保持同一套列结构。
+SQL 输出与明细 Excel 保持同一套列结构，但当前导出脚本已经按 MySQL 导入场景做了优化。
 
 内容包括：
 
-- `CREATE TABLE`
-- 多条 `INSERT INTO`
+- MySQL 友好的 `DROP TABLE IF EXISTS`
+- MySQL 友好的 `CREATE TABLE IF NOT EXISTS`
+- 批量 `INSERT INTO ... VALUES (...), (...)`
+
+当前 SQL 导出针对 MySQL 做了这些优化：
+
+- 标识符使用反引号 `` ` ``，不依赖 ANSI 双引号模式
+- 布尔列使用 `TINYINT(1)`
+- 长文本列使用 `TEXT`，降低建表时的行长压力
+- 多条明细会按批次合并成一条 `INSERT`，减少文件体积和导入耗时
+- 自动转义反斜杠、换行、制表符和单引号
 
 默认表名：
 
@@ -263,6 +272,7 @@ SQL 输出与明细 Excel 保持同一套列结构。
 - Excel / SQL 导出能力
 - 汇总 Excel 多 sheet 输出能力
 - 驱动配置兼容解析
+- MySQL 友好 SQL 导出能力
 
 ## 后续可继续增强的方向
 
