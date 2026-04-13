@@ -107,10 +107,14 @@ Gradle 已内置常用 JDBC 驱动：
 
 ### 汇总 Excel
 
-汇总 Excel 现在收敛为 3 个 sheet，便于直接查看：
+汇总 Excel 现在采用“少量汇总 + 分类型明细”的结构：
 - `Summary`
 - `Table Status`
-- `Detail`
+- `Field Existence Detail`
+- `Type Detail`
+- `Length Detail`
+- `Default Detail`
+- `Nullable Detail`
 
 `Summary` sheet 会把信息集中排版在一个页签里，包含：
 - 视图 schema 划分
@@ -134,12 +138,17 @@ Gradle 已内置常用 JDBC 驱动：
 - `riskLevel`
 - `diffCategory`
 
-`Detail` sheet 按 5 类问题分段输出明细：
-- Field Existence Details
-- Type Details
-- Length Details
-- Default Details
-- Nullable Details
+5 类 detail 现在拆成独立 sheet，便于大数据量查看：
+- `Field Existence Detail`
+- `Type Detail`
+- `Length Detail`
+- `Default Detail`
+- `Nullable Detail`
+
+如果某一类明细数据特别多，还会继续拆成：
+- `Field Existence Detail_2`
+- `Type Detail_2`
+- ...
 
 ### SQL 导出
 

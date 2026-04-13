@@ -6,16 +6,20 @@
 
 ## 2. 输出目标
 
-新的汇总 Excel 只保留 3 个 sheet：
+新的汇总 Excel 保持“少量汇总 + 分类型明细”的结构：
 - `Summary`
 - `Table Status`
-- `Detail`
+- `Field Existence Detail`
+- `Type Detail`
+- `Length Detail`
+- `Default Detail`
+- `Nullable Detail`
 
 其中：
 - `Summary`：集中展示总览、占比、风险规则和 schema 分布
 - `Summary`：集中展示总览、占比、风险规则和 schema 分布，并通过颜色增强状态区分
 - `Table Status`：按表级输出 5 类对比状态
-- `Detail`：按 5 类问题分段输出字段级明细
+- 各 Detail sheet：每种问题类型单独一个 sheet，超大数据量时继续拆成 `_2`、`_3`
 
 ## 3. 统计范围
 
@@ -190,16 +194,14 @@ sheet 名称：`Table Status`
 
 ## 8. Detail Sheet 设计
 
-sheet 名称：`Detail`
+sheet 名称：
+- `Field Existence Detail`
+- `Type Detail`
+- `Length Detail`
+- `Default Detail`
+- `Nullable Detail`
 
-在同一个 sheet 中按 5 个区段输出：
-- `Field Existence Details`
-- `Type Details`
-- `Length Details`
-- `Default Details`
-- `Nullable Details`
-
-每个区段字段一致：
+每个 Detail sheet 字段一致：
 - `sourceDatabase`
 - `sourceSchema`
 - `sourceTable`
@@ -209,7 +211,11 @@ sheet 名称：`Detail`
 - `diffType`
 - `detail`
 
-当某个区段无数据时，输出 `NO_DATA` 标记。
+当某个 Detail sheet 无数据时，输出 `NO_DATA` 标记。
+当某类问题数据量超出单个 sheet 视觉或行数承载时，继续输出：
+- `Field Existence Detail_2`
+- `Type Detail_2`
+- ...
 
 ## 9. 技术要求
 
@@ -222,8 +228,8 @@ sheet 名称：`Detail`
 
 ## 10. 验收标准
 
-- 汇总 Excel 只保留 `Summary`、`Table Status`、`Detail` 3 个核心 sheet
+- 汇总 Excel 至少包含 `Summary`、`Table Status` 和 5 个分类型 Detail sheet
 - Summary 中能同时看到 5 类对比类型的概况、占比、风险规则、schema 分布
 - Table Status 能按表级输出 5 类状态
-- Detail 能按 5 类问题分段输出明细
+- Detail 能按 5 类问题拆成多个 sheet 输出明细
 - 统计结果与字段级原始记录一致

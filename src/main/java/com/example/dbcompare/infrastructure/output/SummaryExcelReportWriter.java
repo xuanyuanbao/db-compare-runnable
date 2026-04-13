@@ -32,7 +32,11 @@ import java.util.function.Predicate;
 public class SummaryExcelReportWriter {
     private static final String SUMMARY_SHEET_NAME = "Summary";
     private static final String TABLE_STATUS_SHEET_NAME = "Table Status";
-    private static final String DETAIL_SHEET_NAME = "Detail";
+    private static final String FIELD_EXISTENCE_DETAIL_SHEET_NAME = "Field Existence Detail";
+    private static final String TYPE_DETAIL_SHEET_NAME = "Type Detail";
+    private static final String LENGTH_DETAIL_SHEET_NAME = "Length Detail";
+    private static final String DEFAULT_DETAIL_SHEET_NAME = "Default Detail";
+    private static final String NULLABLE_DETAIL_SHEET_NAME = "Nullable Detail";
 
     private static final String FULL_EXISTS = "FULL_EXISTS";
     private static final String NOT_FULL_EXISTS = "NOT_FULL_EXISTS";
@@ -185,10 +189,6 @@ public class SummaryExcelReportWriter {
         private int tableStatusSheetSequence = 0;
         private int tableStatusRowIndex = 1;
 
-        private SXSSFSheet detailSheet;
-        private int detailSheetSequence = 0;
-        private int detailRowIndex = 0;
-
         private SummaryExcelReportSession(Path path,
                                           SXSSFWorkbook workbook,
                                           CellStyle titleStyle,
@@ -213,7 +213,6 @@ public class SummaryExcelReportWriter {
             this.maxRowsPerSheet = maxRowsPerSheet;
             this.summarySheet = workbook.createSheet(SUMMARY_SHEET_NAME);
             this.tableStatusSheet = createTableStatusSheet();
-            this.detailSheet = createDetailSheet();
             initializeSummarySheet();
         }
 
@@ -388,37 +387,30 @@ public class SummaryExcelReportWriter {
         }
 
         private void renderDetail() {
-            detailRowIndex = 0;
-            detailSheet = resetDetailSheet(detailSheet);
-            writeDetailSection("Field Existence Details", this::isFieldExistenceRecord);
-            writeDetailSection("Type Details", record -> containsDiff(record, DiffType.COLUMN_TYPE_MISMATCH));
-            writeDetailSection("Length Details", record -> containsDiff(record, DiffType.COLUMN_LENGTH_MISMATCH));
-            writeDetailSection("Default Details", record -> containsDiff(record, DiffType.COLUMN_DEFAULT_MISMATCH));
-            writeDetailSection("Nullable Details", record -> containsDiff(record, DiffType.COLUMN_NULLABLE_MISMATCH));
+            writeDetailSection(FIELD_EXISTENCE_DETAIL_SHEET_NAME, this::isFieldExistenceRecord);
+            writeDetailSection(TYPE_DETAIL_SHEET_NAME, record -> containsDiff(record, DiffType.COLUMN_TYPE_MISMATCH));
+            writeDetailSection(LENGTH_DETAIL_SHEET_NAME, record -> containsDiff(record, DiffType.COLUMN_LENGTH_MISMATCH));
+            writeDetailSection(DEFAULT_DETAIL_SHEET_NAME, record -> containsDiff(record, DiffType.COLUMN_DEFAULT_MISMATCH));
+            writeDetailSection(NULLABLE_DETAIL_SHEET_NAME, record -> containsDiff(record, DiffType.COLUMN_NULLABLE_MISMATCH));
         }
 
-        private void writeDetailSection(String title, Predicate<ColumnComparisonRecord> predicate) {
+        private void writeDetailSection(String baseSheetName, Predicate<ColumnComparisonRecord> predicate) {
             List<ColumnComparisonRecord> filtered = new ArrayList<>();
             for (ColumnComparisonRecord record : detailRecords) {
                 if (predicate.test(record)) {
                     filtered.add(record);
                 }
             }
-            ensureDetailCapacityForRows(filtered.size() + 3);
-            Row titleRow = row(detailSheet, detailRowIndex++);
-            Cell titleCell = titleRow.createCell(0);
-            titleCell.setCellValue(title);
-            titleCell.setCellStyle(titleStyle);
-            Row headerRow = row(detailSheet, detailRowIndex++);
-            writeHeaders(headerRow, DETAIL_HEADERS);
+
+            DetailSheetState state = createDetailSheetState(baseSheetName);
             if (filtered.isEmpty()) {
-                Row emptyRow = row(detailSheet, detailRowIndex++);
+                Row emptyRow = row(state.currentSheet, state.nextRowIndex++);
                 writeCell(emptyRow, 0, "NO_DATA", neutralStyle);
-                detailRowIndex++;
                 return;
             }
             for (ColumnComparisonRecord record : filtered) {
-                Row row = row(detailSheet, detailRowIndex++);
+                ensureDetailCapacityForNextRow(state);
+                Row row = row(state.currentSheet, state.nextRowIndex++);
                 writeCell(row, 0, safe(record.getSourceDatabaseName()));
                 writeCell(row, 1, firstNonBlank(record.getSourceSchemaName(), ""));
                 writeCell(row, 2, firstNonBlank(record.getSourceTableName(), ""));
@@ -429,7 +421,6 @@ public class SummaryExcelReportWriter {
                 writeCell(row, 6, diffType, styleForStatus(diffType));
                 writeCell(row, 7, detailMessage(record), styleForStatus(diffType));
             }
-            detailRowIndex++;
         }
 
         private boolean isFieldExistenceRecord(ColumnComparisonRecord record) {
@@ -477,14 +468,6 @@ public class SummaryExcelReportWriter {
             tableStatusRowIndex = 1;
         }
 
-        private void ensureDetailCapacityForRows(int rowsNeeded) {
-            if (detailRowIndex + rowsNeeded < maxRowsPerSheet) {
-                return;
-            }
-            detailSheet = createDetailSheet();
-            detailRowIndex = 0;
-        }
-
         private SXSSFSheet createTableStatusSheet() {
             String sheetName = tableStatusSheetSequence == 0 ? TABLE_STATUS_SHEET_NAME : TABLE_STATUS_SHEET_NAME + "_" + (tableStatusSheetSequence + 1);
             tableStatusSheetSequence++;
@@ -498,18 +481,32 @@ public class SummaryExcelReportWriter {
             return sheet;
         }
 
-        private SXSSFSheet createDetailSheet() {
-            String sheetName = detailSheetSequence == 0 ? DETAIL_SHEET_NAME : DETAIL_SHEET_NAME + "_" + (detailSheetSequence + 1);
-            detailSheetSequence++;
+        private DetailSheetState createDetailSheetState(String baseSheetName) {
+            DetailSheetState state = new DetailSheetState(baseSheetName);
+            state.currentSheet = createDetailSheet(baseSheetName, state.sequence++);
+            state.nextRowIndex = 1;
+            return state;
+        }
+
+        private SXSSFSheet createDetailSheet(String baseSheetName, int sequence) {
+            String sheetName = sequence == 0 ? baseSheetName : baseSheetName + "_" + (sequence + 1);
             SXSSFSheet sheet = workbook.createSheet(sheetName);
+            Row headerRow = sheet.createRow(0);
+            writeHeaders(headerRow, DETAIL_HEADERS);
+            sheet.createFreezePane(0, 1);
             for (int index = 0; index < DETAIL_HEADERS.length; index++) {
                 sheet.setColumnWidth(index, defaultColumnWidth(index, DETAIL_HEADERS.length));
             }
             return sheet;
         }
 
-        private SXSSFSheet resetDetailSheet(SXSSFSheet sheet) {
-            return sheet;
+        private void ensureDetailCapacityForNextRow(DetailSheetState state) {
+            if (state.nextRowIndex < maxRowsPerSheet) {
+                return;
+            }
+            applyAutoFilter(state.currentSheet, state.nextRowIndex, DETAIL_HEADERS.length);
+            state.currentSheet = createDetailSheet(state.baseSheetName, state.sequence++);
+            state.nextRowIndex = 1;
         }
 
         private void writeBlockTitle(SXSSFSheet sheet, int rowIndex, int columnIndex, String title) {
@@ -603,17 +600,29 @@ public class SummaryExcelReportWriter {
             if (status == null || status.isBlank()) {
                 return neutralStyle;
             }
-            if (status.endsWith("_MATCH") || FULL_EXISTS.equals(status) || FULL_MATCH.equals(status) || LOW.equals(status) || "MATCH".equals(status)) {
+            String normalized = status.trim().toUpperCase();
+            if (normalized.endsWith("_MATCH") || FULL_EXISTS.equals(normalized) || FULL_MATCH.equals(normalized) || LOW.equals(normalized) || "MATCH".equals(normalized)) {
                 return positiveStyle;
             }
-            if (status.contains("MISSING") || status.contains("NOT_FULL_EXISTS") || HIGH.equals(status) || TYPE_MISMATCH.equals(status)) {
-                return negativeStyle;
+            if (normalized.contains("MISSING") || normalized.contains("NOT_FULL_EXISTS") || HIGH.equals(normalized) || normalized.contains("TYPE_MISMATCH")) {
+                return highRiskStyle;
             }
-            if (LENGTH_MISMATCH.equals(status) || DEFAULT_MISMATCH.equals(status) || NULLABLE_MISMATCH.equals(status)
-                    || MEDIUM.equals(status) || OTHER.equals(status)) {
+            if (normalized.contains("LENGTH_MISMATCH") || normalized.contains("DEFAULT_MISMATCH") || normalized.contains("NULLABLE_MISMATCH")
+                    || MEDIUM.equals(normalized) || OTHER.equals(normalized) || "MISMATCH".equals(normalized)) {
                 return mediumRiskStyle;
             }
             return warningStyle;
+        }
+    }
+
+    private static final class DetailSheetState {
+        private final String baseSheetName;
+        private SXSSFSheet currentSheet;
+        private int sequence;
+        private int nextRowIndex;
+
+        private DetailSheetState(String baseSheetName) {
+            this.baseSheetName = baseSheetName;
         }
     }
 
