@@ -15,6 +15,7 @@ import com.example.dbcompare.domain.model.TableMeta;
 import com.example.dbcompare.infrastructure.output.CsvReportWriter;
 import com.example.dbcompare.infrastructure.output.ExcelReportWriter;
 import com.example.dbcompare.infrastructure.output.SqlReportWriter;
+import com.example.dbcompare.infrastructure.output.SummaryExcelReportWriter;
 import com.example.dbcompare.infrastructure.output.SummaryReportWriter;
 import com.example.dbcompare.util.NameNormalizer;
 import org.slf4j.Logger;
@@ -39,6 +40,7 @@ public class CompareOrchestrator {
     private final ExcelReportWriter excelReportWriter;
     private final SqlReportWriter sqlReportWriter;
     private final SummaryReportWriter summaryReportWriter;
+    private final SummaryExcelReportWriter summaryExcelReportWriter;
     private final ViewParser viewParser;
 
     public CompareOrchestrator(MetadataLoadService metadataLoadService,
@@ -49,7 +51,19 @@ public class CompareOrchestrator {
                                SqlReportWriter sqlReportWriter,
                                SummaryReportWriter summaryReportWriter) {
         this(metadataLoadService, mappingService, tableCompareService, csvReportWriter, excelReportWriter,
-                sqlReportWriter, summaryReportWriter, new ViewParser());
+                sqlReportWriter, summaryReportWriter, new SummaryExcelReportWriter(), new ViewParser());
+    }
+
+    public CompareOrchestrator(MetadataLoadService metadataLoadService,
+                               MappingService mappingService,
+                               TableCompareService tableCompareService,
+                               CsvReportWriter csvReportWriter,
+                               ExcelReportWriter excelReportWriter,
+                               SqlReportWriter sqlReportWriter,
+                               SummaryReportWriter summaryReportWriter,
+                               SummaryExcelReportWriter summaryExcelReportWriter) {
+        this(metadataLoadService, mappingService, tableCompareService, csvReportWriter, excelReportWriter,
+                sqlReportWriter, summaryReportWriter, summaryExcelReportWriter, new ViewParser());
     }
 
     CompareOrchestrator(MetadataLoadService metadataLoadService,
@@ -59,6 +73,7 @@ public class CompareOrchestrator {
                         ExcelReportWriter excelReportWriter,
                         SqlReportWriter sqlReportWriter,
                         SummaryReportWriter summaryReportWriter,
+                        SummaryExcelReportWriter summaryExcelReportWriter,
                         ViewParser viewParser) {
         this.metadataLoadService = metadataLoadService;
         this.mappingService = mappingService;
@@ -67,6 +82,7 @@ public class CompareOrchestrator {
         this.excelReportWriter = excelReportWriter;
         this.sqlReportWriter = sqlReportWriter;
         this.summaryReportWriter = summaryReportWriter;
+        this.summaryExcelReportWriter = summaryExcelReportWriter;
         this.viewParser = viewParser;
     }
 
@@ -86,29 +102,37 @@ public class CompareOrchestrator {
              ExcelReportWriter.ExcelReportSession excelSession = excelReportWriter.open(Path.of(compareConfig.getOutput().getExcelPath()));
              SqlReportWriter.SqlReportSession sqlSession = sqlReportWriter.open(
                      Path.of(compareConfig.getOutput().getSqlPath()),
-                     compareConfig.getOutput().getSqlTableName())) {
+                     compareConfig.getOutput().getSqlTableName());
+             SummaryExcelReportWriter.SummaryExcelReportSession summaryExcelSession = summaryExcelReportWriter.open(
+                     Path.of(compareConfig.getOutput().getSummaryExcelPath()))) {
 
             for (DataSourceInfo sourceInfo : compareConfig.getSources()) {
                 DatabaseMeta sourceDbMeta = metadataLoadService.loadSource(sourceInfo);
 
                 for (SchemaMeta sourceSchema : sourceDbMeta.getSchemas().values()) {
-                    if (!shouldProcessSchema(compareConfig, sourceSchema.getSchemaName())) continue;
+                    if (!shouldProcessSchema(compareConfig, sourceSchema.getSchemaName())) {
+                        continue;
+                    }
                     summary.incrementSourceSchemaCount();
 
                     for (TableMeta sourceTable : sourceSchema.getTables().values()) {
-                        if (!shouldProcessTable(compareConfig, sourceTable.getTableName())) continue;
+                        if (!shouldProcessTable(compareConfig, sourceTable.getTableName())) {
+                            continue;
+                        }
                         summary.incrementSourceTableCount();
 
                         MappingService.TableTarget tableTarget = mappingService.findTargetTable(
                                 sourceInfo.getSourceName(), sourceSchema.getSchemaName(), sourceTable.getTableName());
-                        if (tableTarget == null) continue;
+                        if (tableTarget == null) {
+                            continue;
+                        }
 
                         SchemaMeta targetSchema = targetMetadata.getSchemas().get(NameNormalizer.normalize(tableTarget.getSchemaName()));
                         TableMeta targetTable = targetSchema == null ? null : targetSchema.getTables().get(NameNormalizer.normalize(tableTarget.getTableName()));
                         TableComparisonResult comparisonResult = tableCompareService.compareDetailed(sourceInfo, sourceSchema.getSchemaName(), sourceTable,
                                 tableTarget.getSchemaName(), targetTable, compareConfig.getOptions());
 
-                        appendResult(summary, csvSession, excelSession, sqlSession, comparisonResult);
+                        appendResult(summary, csvSession, excelSession, sqlSession, summaryExcelSession, comparisonResult);
                     }
                 }
             }
@@ -134,7 +158,9 @@ public class CompareOrchestrator {
              ExcelReportWriter.ExcelReportSession excelSession = excelReportWriter.open(Path.of(compareConfig.getOutput().getExcelPath()));
              SqlReportWriter.SqlReportSession sqlSession = sqlReportWriter.open(
                      Path.of(compareConfig.getOutput().getSqlPath()),
-                     compareConfig.getOutput().getSqlTableName())) {
+                     compareConfig.getOutput().getSqlTableName());
+             SummaryExcelReportWriter.SummaryExcelReportSession summaryExcelSession = summaryExcelReportWriter.open(
+                     Path.of(compareConfig.getOutput().getSummaryExcelPath()))) {
 
             for (int index = 0; index < compareTasks.size(); index++) {
                 CompareTask task = compareTasks.get(index);
@@ -179,7 +205,7 @@ public class CompareOrchestrator {
                             targetView,
                             compareConfig.getOptions());
                 }
-                appendResult(summary, csvSession, excelSession, sqlSession, comparisonResult);
+                appendResult(summary, csvSession, excelSession, sqlSession, summaryExcelSession, comparisonResult);
             }
         } catch (IOException e) {
             throw new IllegalStateException("Failed to close report writers", e);
@@ -239,10 +265,12 @@ public class CompareOrchestrator {
                               CsvReportWriter.CsvReportSession csvSession,
                               ExcelReportWriter.ExcelReportSession excelSession,
                               SqlReportWriter.SqlReportSession sqlSession,
+                              SummaryExcelReportWriter.SummaryExcelReportSession summaryExcelSession,
                               TableComparisonResult comparisonResult) {
         csvSession.append(comparisonResult.getDiffs());
         excelSession.append(comparisonResult.getColumnRecords());
         sqlSession.append(comparisonResult.getColumnRecords());
+        summaryExcelSession.append(comparisonResult.getColumnRecords());
         summary.recordDiffs(comparisonResult.getDiffs());
     }
 
@@ -274,11 +302,17 @@ public class CompareOrchestrator {
 
     private boolean matches(String value, List<String> includes, List<String> excludes) {
         for (String exclude : excludes) {
-            if (value.equals(NameNormalizer.normalize(exclude))) return false;
+            if (value.equals(NameNormalizer.normalize(exclude))) {
+                return false;
+            }
         }
-        if (includes.isEmpty()) return true;
+        if (includes.isEmpty()) {
+            return true;
+        }
         for (String include : includes) {
-            if (value.equals(NameNormalizer.normalize(include))) return true;
+            if (value.equals(NameNormalizer.normalize(include))) {
+                return true;
+            }
         }
         return false;
     }

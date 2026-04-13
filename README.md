@@ -20,6 +20,7 @@
 - 支持 AS400 library list 解析
 - 输出差异 CSV
 - 输出全量 Excel 明细
+- 输出管理视角的汇总 Excel
 - 输出可直接导入数据库的 SQL 明细
 
 ## 运行方式
@@ -88,6 +89,7 @@ gradlew.bat clean build
   - 指定源库默认 schema，便于单表精准查询
 - `dbcompare.output.csv-path`
 - `dbcompare.output.excel-path`
+- `dbcompare.output.summary-excel-path`
 - `dbcompare.output.sql-path`
 - `dbcompare.output.sql-table-name`
 - `dbcompare.output.summary-path`
@@ -149,9 +151,9 @@ gradlew.bat clean build
 
 CSV 只输出差异项。
 
-### Excel
+### Detail Excel
 
-Excel 输出全量字段明细，包括一致项和不一致项。
+明细 Excel 输出全量字段明细，包括一致项和不一致项。
 
 状态列包括：
 
@@ -166,9 +168,38 @@ Excel 输出全量字段明细，包括一致项和不一致项。
 - `Detail_3`
 - ...
 
+### Summary Excel
+
+汇总 Excel 用于汇报和风险分析，会输出多个 sheet：
+
+- `Overview`
+- `Diff Summary`
+- `Risk Summary`
+- `Schema Distribution`
+- `Top Issue Tables`
+- `Detail`
+
+其中：
+
+- `Overview`：总表数、已匹配表数、未匹配表数、覆盖率
+- `Diff Summary`：按表级主差异分类统计
+- `Risk Summary`：按低/中/高风险统计
+- `Schema Distribution`：按 schema 统计表数量
+- `Top Issue Tables`：按差异数量排序的问题表
+- `Detail`：按 `source_db / schema / table / column / diff_type / detail` 输出简化明细
+
+当前汇总规则：
+
+- 以表为统计单位
+- 只要表内任意字段存在差异，就视为问题表
+- 风险分级默认规则：
+  - 无差异：低风险
+  - 长度 / 默认值 / nullable 差异：中风险
+  - 缺字段 / 缺表 / 类型不一致 / 歧义表：高风险
+
 ### SQL
 
-SQL 输出与 Excel 明细保持同一套列结构。
+SQL 输出与明细 Excel 保持同一套列结构。
 
 内容包括：
 
@@ -189,6 +220,7 @@ SQL 输出与 Excel 明细保持同一套列结构。
 
 - `build/reports/default-compare-report.csv`
 - `build/reports/default-compare-detail.xlsx`
+- `build/reports/default-compare-summary.xlsx`
 - `build/reports/default-compare-detail.sql`
 - `build/reports/default-compare-summary.txt`
 
@@ -213,7 +245,8 @@ SQL 输出与 Excel 明细保持同一套列结构。
 - `src/test/java`：测试代码
 - `examples/sql`：示例 SQL
 - `scripts`：简单脚本封装
-- `db_compare_requirements.md`：需求文档
+- `db_compare_requirements.md`：目标驱动需求文档
+- `db_compare_excel_requirements.md`：汇总 Excel 需求文档
 
 核心入口：
 
@@ -228,6 +261,7 @@ SQL 输出与 Excel 明细保持同一套列结构。
 - 反向 mapping
 - 新配置项解析
 - Excel / SQL 导出能力
+- 汇总 Excel 多 sheet 输出能力
 - 驱动配置兼容解析
 
 ## 后续可继续增强的方向
@@ -236,3 +270,4 @@ SQL 输出与 Excel 明细保持同一套列结构。
 - 针对 DB2 / AS400 的单表查询进一步做数据库专用 SQL 优化
 - 将 target-driven 任务规划结果输出为单独审计报表
 - 对超大结果集按 schema 或 source database 自动拆分输出文件
+- 支持对汇总 Excel 的风险规则和 Top N 行数进行配置化

@@ -3,6 +3,7 @@ package com.example.dbcompare.config;
 import com.example.dbcompare.infrastructure.output.CsvReportWriter;
 import com.example.dbcompare.infrastructure.output.ExcelReportWriter;
 import com.example.dbcompare.infrastructure.output.SqlReportWriter;
+import com.example.dbcompare.infrastructure.output.SummaryExcelReportWriter;
 import com.example.dbcompare.infrastructure.output.SummaryReportWriter;
 import com.example.dbcompare.service.CompareOrchestrator;
 import com.example.dbcompare.service.MappingService;
@@ -44,6 +45,11 @@ public class CompareBeansConfig {
     }
 
     @Bean
+    public SummaryExcelReportWriter summaryExcelReportWriter() {
+        return new SummaryExcelReportWriter();
+    }
+
+    @Bean
     public SqlReportWriter sqlReportWriter() {
         return new SqlReportWriter();
     }
@@ -60,7 +66,8 @@ public class CompareBeansConfig {
                                                    CsvReportWriter csvReportWriter,
                                                    ExcelReportWriter excelReportWriter,
                                                    SqlReportWriter sqlReportWriter,
-                                                   SummaryReportWriter summaryReportWriter) {
+                                                   SummaryReportWriter summaryReportWriter,
+                                                   SummaryExcelReportWriter summaryExcelReportWriter) {
         return new CompareOrchestrator(
                 metadataLoadService,
                 mappingService,
@@ -68,6 +75,7 @@ public class CompareBeansConfig {
                 csvReportWriter,
                 excelReportWriter,
                 sqlReportWriter,
-                summaryReportWriter);
+                summaryReportWriter,
+                summaryExcelReportWriter);
     }
 }

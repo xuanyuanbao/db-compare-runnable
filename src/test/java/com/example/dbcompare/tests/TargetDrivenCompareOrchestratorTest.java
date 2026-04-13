@@ -16,6 +16,7 @@ import com.example.dbcompare.domain.model.TableMeta;
 import com.example.dbcompare.infrastructure.output.CsvReportWriter;
 import com.example.dbcompare.infrastructure.output.ExcelReportWriter;
 import com.example.dbcompare.infrastructure.output.SqlReportWriter;
+import com.example.dbcompare.infrastructure.output.SummaryExcelReportWriter;
 import com.example.dbcompare.infrastructure.output.SummaryReportWriter;
 import com.example.dbcompare.service.CompareOrchestrator;
 import com.example.dbcompare.service.MappingService;
@@ -63,6 +64,7 @@ class TargetDrivenCompareOrchestratorTest {
 
         config.getOutput().setCsvPath(tempDir.resolve("report.csv").toString());
         config.getOutput().setExcelPath(tempDir.resolve("detail.xlsx").toString());
+        config.getOutput().setSummaryExcelPath(tempDir.resolve("summary.xlsx").toString());
         config.getOutput().setSqlPath(tempDir.resolve("detail.sql").toString());
         config.getOutput().setSummaryPath(tempDir.resolve("summary.txt").toString());
 
@@ -74,7 +76,8 @@ class TargetDrivenCompareOrchestratorTest {
                 new CsvReportWriter(),
                 new ExcelReportWriter(),
                 new SqlReportWriter(),
-                new SummaryReportWriter());
+                new SummaryReportWriter(),
+                new SummaryExcelReportWriter());
 
         CompareSummary summary = orchestrator.execute(config);
 
@@ -84,6 +87,7 @@ class TargetDrivenCompareOrchestratorTest {
         assertEquals(1, summary.getDiffCount(), "the targeted compare should preserve the column mismatch result");
         assertTrue(Files.exists(Path.of(config.getOutput().getCsvPath())), "csv report should be created");
         assertTrue(Files.exists(Path.of(config.getOutput().getExcelPath())), "excel report should be created");
+        assertTrue(Files.exists(Path.of(config.getOutput().getSummaryExcelPath())), "summary excel report should be created");
         assertTrue(Files.exists(Path.of(config.getOutput().getSqlPath())), "sql report should be created");
     }
 
