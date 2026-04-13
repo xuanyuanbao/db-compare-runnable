@@ -10,6 +10,7 @@ import org.apache.poi.ss.usermodel.FillPatternType;
 import org.apache.poi.ss.usermodel.Font;
 import org.apache.poi.ss.usermodel.HorizontalAlignment;
 import org.apache.poi.ss.usermodel.IndexedColors;
+import org.apache.poi.ss.usermodel.BorderStyle;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.streaming.SXSSFSheet;
@@ -91,7 +92,24 @@ public class SummaryExcelReportWriter {
             workbook.setCompressTempFiles(true);
             CellStyle titleStyle = createTitleStyle(workbook);
             CellStyle headerStyle = createHeaderStyle(workbook);
-            return new SummaryExcelReportSession(path, workbook, titleStyle, headerStyle, maxRowsPerSheet);
+            CellStyle neutralStyle = createBodyStyle(workbook, IndexedColors.WHITE);
+            CellStyle positiveStyle = createBodyStyle(workbook, IndexedColors.LIGHT_GREEN);
+            CellStyle warningStyle = createBodyStyle(workbook, IndexedColors.LIGHT_YELLOW);
+            CellStyle negativeStyle = createBodyStyle(workbook, IndexedColors.ROSE);
+            CellStyle mediumRiskStyle = createBodyStyle(workbook, IndexedColors.LIGHT_ORANGE);
+            CellStyle highRiskStyle = createBodyStyle(workbook, IndexedColors.CORAL);
+            return new SummaryExcelReportSession(
+                    path,
+                    workbook,
+                    titleStyle,
+                    headerStyle,
+                    neutralStyle,
+                    positiveStyle,
+                    warningStyle,
+                    negativeStyle,
+                    mediumRiskStyle,
+                    highRiskStyle,
+                    maxRowsPerSheet);
         } catch (IOException e) {
             throw new IllegalStateException("Failed to open summary Excel report: " + path, e);
         }
@@ -116,6 +134,21 @@ public class SummaryExcelReportWriter {
         style.setAlignment(HorizontalAlignment.CENTER);
         style.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
         style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        style.setBorderBottom(BorderStyle.THIN);
+        style.setBorderTop(BorderStyle.THIN);
+        style.setBorderLeft(BorderStyle.THIN);
+        style.setBorderRight(BorderStyle.THIN);
+        return style;
+    }
+
+    private CellStyle createBodyStyle(SXSSFWorkbook workbook, IndexedColors fillColor) {
+        CellStyle style = workbook.createCellStyle();
+        style.setFillForegroundColor(fillColor.getIndex());
+        style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        style.setBorderBottom(BorderStyle.THIN);
+        style.setBorderTop(BorderStyle.THIN);
+        style.setBorderLeft(BorderStyle.THIN);
+        style.setBorderRight(BorderStyle.THIN);
         return style;
     }
 
@@ -127,9 +160,9 @@ public class SummaryExcelReportWriter {
             return 18 * 256;
         }
         if (headerCount == TABLE_STATUS_HEADERS.length) {
-            return 16 * 256;
+            return 20 * 256;
         }
-        return 18 * 256;
+        return 22 * 256;
     }
 
     public final class SummaryExcelReportSession implements Closeable {
@@ -137,6 +170,12 @@ public class SummaryExcelReportWriter {
         private final SXSSFWorkbook workbook;
         private final CellStyle titleStyle;
         private final CellStyle headerStyle;
+        private final CellStyle neutralStyle;
+        private final CellStyle positiveStyle;
+        private final CellStyle warningStyle;
+        private final CellStyle negativeStyle;
+        private final CellStyle mediumRiskStyle;
+        private final CellStyle highRiskStyle;
         private final int maxRowsPerSheet;
         private final SXSSFSheet summarySheet;
         private final Map<String, TableStats> tableStats = new LinkedHashMap<>();
@@ -154,11 +193,23 @@ public class SummaryExcelReportWriter {
                                           SXSSFWorkbook workbook,
                                           CellStyle titleStyle,
                                           CellStyle headerStyle,
+                                          CellStyle neutralStyle,
+                                          CellStyle positiveStyle,
+                                          CellStyle warningStyle,
+                                          CellStyle negativeStyle,
+                                          CellStyle mediumRiskStyle,
+                                          CellStyle highRiskStyle,
                                           int maxRowsPerSheet) {
             this.path = path;
             this.workbook = workbook;
             this.titleStyle = titleStyle;
             this.headerStyle = headerStyle;
+            this.neutralStyle = neutralStyle;
+            this.positiveStyle = positiveStyle;
+            this.warningStyle = warningStyle;
+            this.negativeStyle = negativeStyle;
+            this.mediumRiskStyle = mediumRiskStyle;
+            this.highRiskStyle = highRiskStyle;
             this.maxRowsPerSheet = maxRowsPerSheet;
             this.summarySheet = workbook.createSheet(SUMMARY_SHEET_NAME);
             this.tableStatusSheet = createTableStatusSheet();
@@ -188,11 +239,18 @@ public class SummaryExcelReportWriter {
         }
 
         private void initializeSummarySheet() {
-            setColumnWidths(summarySheet, 0, 1, 18);
-            setColumnWidths(summarySheet, 3, 4, 18);
-            setColumnWidths(summarySheet, 6, 8, 18);
-            setColumnWidths(summarySheet, 10, 12, 18);
-            setColumnWidths(summarySheet, 14, 15, 24);
+            setColumnWidths(summarySheet, 0, 0, 18);
+            setColumnWidths(summarySheet, 1, 1, 14);
+            setColumnWidths(summarySheet, 3, 3, 22);
+            setColumnWidths(summarySheet, 4, 4, 14);
+            setColumnWidths(summarySheet, 6, 6, 24);
+            setColumnWidths(summarySheet, 7, 7, 14);
+            setColumnWidths(summarySheet, 8, 8, 14);
+            setColumnWidths(summarySheet, 10, 10, 22);
+            setColumnWidths(summarySheet, 11, 11, 14);
+            setColumnWidths(summarySheet, 12, 12, 14);
+            setColumnWidths(summarySheet, 14, 14, 34);
+            setColumnWidths(summarySheet, 15, 15, 16);
         }
 
         private void collect(ColumnComparisonRecord record) {
@@ -213,9 +271,9 @@ public class SummaryExcelReportWriter {
             writeStatusBlock("typeStatus", TYPE_STATUS_ORDER, TableStats::typeStatus, 4, 6);
             writeStatusBlock("lengthStatus", LENGTH_STATUS_ORDER, TableStats::lengthStatus, 8, 6);
             writeStatusBlock("defaultStatus", DEFAULT_STATUS_ORDER, TableStats::defaultStatus, 12, 6);
-            writeStatusBlock("nullableStatus", NULLABLE_STATUS_ORDER, TableStats::nullableStatus, 0, 10);
-            writeStatusBlock("riskLevel", RISK_LEVEL_ORDER, TableStats::riskLevel, 4, 10);
-            writeStatusBlock("diffCategory", DIFF_CATEGORY_ORDER, TableStats::diffCategory, 8, 10);
+            writeStatusBlock("nullableStatus", NULLABLE_STATUS_ORDER, TableStats::nullableStatus, 16, 6);
+            writeStatusBlock("riskLevel", RISK_LEVEL_ORDER, TableStats::riskLevel, 0, 10);
+            writeStatusBlock("diffCategory", DIFF_CATEGORY_ORDER, TableStats::diffCategory, 5, 10);
             writeRiskRuleBlock(0, 14);
         }
 
@@ -232,12 +290,12 @@ public class SummaryExcelReportWriter {
             int rowIndex = startRow + 2;
             for (Map.Entry<String, Integer> entry : sortedEntries) {
                 Row row = row(summarySheet, rowIndex++);
-                writeCell(row, startColumn, entry.getKey());
-                writeCell(row, startColumn + 1, Integer.toString(entry.getValue()));
+                writeCell(row, startColumn, entry.getKey(), neutralStyle);
+                writeCell(row, startColumn + 1, Integer.toString(entry.getValue()), neutralStyle);
             }
             Row totalRow = row(summarySheet, rowIndex);
-            writeCell(totalRow, startColumn, "total");
-            writeCell(totalRow, startColumn + 1, Integer.toString(tableStats.size()));
+            writeCell(totalRow, startColumn, "total", titleStyle);
+            writeCell(totalRow, startColumn + 1, Integer.toString(tableStats.size()), titleStyle);
         }
 
         private void writeOverviewBlock(int startRow, int startColumn) {
@@ -263,8 +321,8 @@ public class SummaryExcelReportWriter {
             int rowIndex = startRow + 2;
             for (String[] metric : metrics) {
                 Row row = row(summarySheet, rowIndex++);
-                writeCell(row, startColumn, metric[0]);
-                writeCell(row, startColumn + 1, metric[1]);
+                writeCell(row, startColumn, metric[0], neutralStyle);
+                writeCell(row, startColumn + 1, metric[1], neutralStyle);
             }
         }
 
@@ -286,9 +344,10 @@ public class SummaryExcelReportWriter {
             int rowIndex = startRow + 2;
             for (String status : orderedStatuses) {
                 Row row = row(summarySheet, rowIndex++);
-                writeCell(row, startColumn, status);
-                writeCell(row, startColumn + 1, Integer.toString(counts.get(status)));
-                writeCell(row, startColumn + 2, ratio(counts.get(status), totalTables));
+                CellStyle statusStyle = styleForStatus(status);
+                writeCell(row, startColumn, status, statusStyle);
+                writeCell(row, startColumn + 1, Integer.toString(counts.get(status)), statusStyle);
+                writeCell(row, startColumn + 2, ratio(counts.get(status), totalTables), statusStyle);
             }
         }
 
@@ -303,8 +362,8 @@ public class SummaryExcelReportWriter {
             int rowIndex = startRow + 2;
             for (String[] rule : rules) {
                 Row row = row(summarySheet, rowIndex++);
-                writeCell(row, startColumn, rule[0]);
-                writeCell(row, startColumn + 1, rule[1]);
+                writeCell(row, startColumn, rule[0], neutralStyle);
+                writeCell(row, startColumn + 1, rule[1], styleForStatus(rule[1]));
             }
         }
 
@@ -318,13 +377,13 @@ public class SummaryExcelReportWriter {
                 writeCell(row, 2, stats.sourceTableName);
                 writeCell(row, 3, stats.targetSchemaName);
                 writeCell(row, 4, stats.targetTableName);
-                writeCell(row, 5, stats.fieldExistenceStatus());
-                writeCell(row, 6, stats.typeStatus());
-                writeCell(row, 7, stats.lengthStatus());
-                writeCell(row, 8, stats.defaultStatus());
-                writeCell(row, 9, stats.nullableStatus());
-                writeCell(row, 10, stats.riskLevel());
-                writeCell(row, 11, stats.diffCategory());
+                writeCell(row, 5, stats.fieldExistenceStatus(), styleForStatus(stats.fieldExistenceStatus()));
+                writeCell(row, 6, stats.typeStatus(), styleForStatus(stats.typeStatus()));
+                writeCell(row, 7, stats.lengthStatus(), styleForStatus(stats.lengthStatus()));
+                writeCell(row, 8, stats.defaultStatus(), styleForStatus(stats.defaultStatus()));
+                writeCell(row, 9, stats.nullableStatus(), styleForStatus(stats.nullableStatus()));
+                writeCell(row, 10, stats.riskLevel(), styleForStatus(stats.riskLevel()));
+                writeCell(row, 11, stats.diffCategory(), styleForStatus(stats.diffCategory()));
             }
         }
 
@@ -354,7 +413,7 @@ public class SummaryExcelReportWriter {
             writeHeaders(headerRow, DETAIL_HEADERS);
             if (filtered.isEmpty()) {
                 Row emptyRow = row(detailSheet, detailRowIndex++);
-                writeCell(emptyRow, 0, "NO_DATA");
+                writeCell(emptyRow, 0, "NO_DATA", neutralStyle);
                 detailRowIndex++;
                 return;
             }
@@ -366,8 +425,9 @@ public class SummaryExcelReportWriter {
                 writeCell(row, 3, firstNonBlank(record.getTargetSchemaName(), ""));
                 writeCell(row, 4, firstNonBlank(record.getTargetTableName(), ""));
                 writeCell(row, 5, safe(record.getColumnName()));
-                writeCell(row, 6, detailDiffType(record));
-                writeCell(row, 7, detailMessage(record));
+                String diffType = detailDiffType(record);
+                writeCell(row, 6, diffType, styleForStatus(diffType));
+                writeCell(row, 7, detailMessage(record), styleForStatus(diffType));
             }
             detailRowIndex++;
         }
@@ -486,6 +546,14 @@ public class SummaryExcelReportWriter {
             cell.setCellValue(value == null ? "" : value);
         }
 
+        private void writeCell(Row row, int columnIndex, String value, CellStyle style) {
+            Cell cell = row.createCell(columnIndex);
+            cell.setCellValue(value == null ? "" : value);
+            if (style != null) {
+                cell.setCellStyle(style);
+            }
+        }
+
         private void setColumnWidths(SXSSFSheet sheet, int fromColumn, int toColumn, int widthChars) {
             for (int columnIndex = fromColumn; columnIndex <= toColumn; columnIndex++) {
                 sheet.setColumnWidth(columnIndex, widthChars * 256);
@@ -529,6 +597,23 @@ public class SummaryExcelReportWriter {
 
         private String safe(String value) {
             return value == null ? "" : value;
+        }
+
+        private CellStyle styleForStatus(String status) {
+            if (status == null || status.isBlank()) {
+                return neutralStyle;
+            }
+            if (status.endsWith("_MATCH") || FULL_EXISTS.equals(status) || FULL_MATCH.equals(status) || LOW.equals(status) || "MATCH".equals(status)) {
+                return positiveStyle;
+            }
+            if (status.contains("MISSING") || status.contains("NOT_FULL_EXISTS") || HIGH.equals(status) || TYPE_MISMATCH.equals(status)) {
+                return negativeStyle;
+            }
+            if (LENGTH_MISMATCH.equals(status) || DEFAULT_MISMATCH.equals(status) || NULLABLE_MISMATCH.equals(status)
+                    || MEDIUM.equals(status) || OTHER.equals(status)) {
+                return mediumRiskStyle;
+            }
+            return warningStyle;
         }
     }
 

@@ -118,6 +118,7 @@ Gradle 已内置常用 JDBC 驱动：
 - 风险等级划分
 - diff 分类占比
 - 风险等级规则
+- 状态色高亮，方便快速区分一致、一般风险和高风险
 
 `Table Status` sheet 输出表级汇总结果，字段包括：
 - `sourceDatabase`

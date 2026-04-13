@@ -13,6 +13,7 @@
 
 其中：
 - `Summary`：集中展示总览、占比、风险规则和 schema 分布
+- `Summary`：集中展示总览、占比、风险规则和 schema 分布，并通过颜色增强状态区分
 - `Table Status`：按表级输出 5 类对比状态
 - `Detail`：按 5 类问题分段输出字段级明细
 
@@ -123,6 +124,11 @@ Java 侧规则：
 - `defaultStatus`
 - `nullableStatus`
 
+布局要求：
+- `nullableStatus` 与前 4 类状态块保持同一列纵向排布
+- `riskLevel` 与 `diffCategory` 需要单独放置，不能遮挡统计值
+- 各状态块列宽需要保证完整显示长文本，例如 `NULLABLE_MISMATCH`、`HIGH`
+
 ### 6.4 diff 分类占比
 
 字段：
@@ -212,6 +218,7 @@ sheet 名称：`Detail`
 - Excel 可直接打开
 - 汇总信息尽量集中，减少 sheet 数量
 - Detail 仍要支持超大数据量分 sheet
+- 汇总、表级状态、明细中的关键状态需要有明显颜色或样式区分，不能只靠文字辨认
 
 ## 10. 验收标准
 

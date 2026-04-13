@@ -13,6 +13,7 @@ import java.nio.file.Path;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 class SummaryExcelReportWriterTest {
     @Test
@@ -58,22 +59,29 @@ class SummaryExcelReportWriterTest {
             assertEquals("defaultStatus", workbook.getSheet("Summary").getRow(12).getCell(6).getStringCellValue(), "summary should include default block");
             assertEquals("1", workbook.getSheet("Summary").getRow(15).getCell(7).getStringCellValue(), "default summary should count default mismatch tables");
 
-            assertEquals("nullableStatus", workbook.getSheet("Summary").getRow(0).getCell(10).getStringCellValue(), "summary should include nullable block");
-            assertEquals("5", workbook.getSheet("Summary").getRow(2).getCell(11).getStringCellValue(), "nullable summary should count matching tables");
-            assertEquals("riskLevel", workbook.getSheet("Summary").getRow(4).getCell(10).getStringCellValue(), "summary should include risk block");
-            assertEquals("1", workbook.getSheet("Summary").getRow(6).getCell(11).getStringCellValue(), "risk summary should count low risk tables");
-            assertEquals("2", workbook.getSheet("Summary").getRow(7).getCell(11).getStringCellValue(), "risk summary should count medium risk tables");
-            assertEquals("2", workbook.getSheet("Summary").getRow(8).getCell(11).getStringCellValue(), "risk summary should count high risk tables");
-            assertEquals("diffCategory", workbook.getSheet("Summary").getRow(8).getCell(10).getStringCellValue(), "summary should include diff category block");
-            assertEquals("1", workbook.getSheet("Summary").getRow(10).getCell(11).getStringCellValue(), "diff summary should count full match tables");
-            assertEquals("1", workbook.getSheet("Summary").getRow(11).getCell(11).getStringCellValue(), "diff summary should count missing-column tables");
-            assertEquals("1", workbook.getSheet("Summary").getRow(12).getCell(11).getStringCellValue(), "diff summary should count type mismatch tables");
-            assertEquals("1", workbook.getSheet("Summary").getRow(13).getCell(11).getStringCellValue(), "diff summary should count length mismatch tables");
-            assertEquals("1", workbook.getSheet("Summary").getRow(14).getCell(11).getStringCellValue(), "diff summary should count other tables");
+            assertEquals("nullableStatus", workbook.getSheet("Summary").getRow(16).getCell(6).getStringCellValue(), "summary should include nullable block in the main status column");
+            assertEquals("5", workbook.getSheet("Summary").getRow(18).getCell(7).getStringCellValue(), "nullable summary should count matching tables");
+            assertEquals("riskLevel", workbook.getSheet("Summary").getRow(0).getCell(10).getStringCellValue(), "summary should include risk block");
+            assertEquals("1", workbook.getSheet("Summary").getRow(2).getCell(11).getStringCellValue(), "risk summary should count low risk tables");
+            assertEquals("2", workbook.getSheet("Summary").getRow(3).getCell(11).getStringCellValue(), "risk summary should count medium risk tables");
+            assertEquals("2", workbook.getSheet("Summary").getRow(4).getCell(11).getStringCellValue(), "risk summary should count high risk tables");
+            assertEquals("diffCategory", workbook.getSheet("Summary").getRow(5).getCell(10).getStringCellValue(), "summary should include diff category block");
+            assertEquals("1", workbook.getSheet("Summary").getRow(7).getCell(11).getStringCellValue(), "diff summary should count full match tables");
+            assertEquals("1", workbook.getSheet("Summary").getRow(8).getCell(11).getStringCellValue(), "diff summary should count missing-column tables");
+            assertEquals("1", workbook.getSheet("Summary").getRow(9).getCell(11).getStringCellValue(), "diff summary should count type mismatch tables");
+            assertEquals("1", workbook.getSheet("Summary").getRow(10).getCell(11).getStringCellValue(), "diff summary should count length mismatch tables");
+            assertEquals("1", workbook.getSheet("Summary").getRow(11).getCell(11).getStringCellValue(), "diff summary should count other tables");
 
             assertEquals("risk rules", workbook.getSheet("Summary").getRow(0).getCell(14).getStringCellValue(), "summary should include risk rules");
             assertEquals("No mismatch", workbook.getSheet("Summary").getRow(2).getCell(14).getStringCellValue(), "risk rules should describe low risk");
             assertEquals("LOW", workbook.getSheet("Summary").getRow(2).getCell(15).getStringCellValue(), "risk rules should map low risk");
+
+            short fullExistsColor = workbook.getSheet("Summary").getRow(2).getCell(6).getCellStyle().getFillForegroundColor();
+            short riskHighColor = workbook.getSheet("Summary").getRow(4).getCell(10).getCellStyle().getFillForegroundColor();
+            short missingColumnColor = workbook.getSheet("Table Status").getRow(3).getCell(11).getCellStyle().getFillForegroundColor();
+            assertNotEquals(0, fullExistsColor, "summary status cells should have a fill color");
+            assertNotEquals(fullExistsColor, riskHighColor, "high risk should use a different highlight than positive status");
+            assertEquals(riskHighColor, missingColumnColor, "table status should reuse strong highlight for severe mismatch categories");
 
             assertEquals("TABLE_MISSING", workbook.getSheet("Table Status").getRow(3).getCell(2).getStringCellValue(), "table status sheet should list the missing-field table");
             assertEquals("NOT_FULL_EXISTS", workbook.getSheet("Table Status").getRow(3).getCell(5).getStringCellValue(), "table status sheet should classify missing columns as not fully existing");
