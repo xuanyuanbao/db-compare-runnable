@@ -30,13 +30,13 @@ import java.util.Map;
 import java.util.function.Predicate;
 
 public class SummaryExcelReportWriter {
-    private static final String SUMMARY_SHEET_NAME = "Summary";
-    private static final String TABLE_STATUS_SHEET_NAME = "Table Status";
-    private static final String FIELD_EXISTENCE_DETAIL_SHEET_NAME = "Field Existence Detail";
-    private static final String TYPE_DETAIL_SHEET_NAME = "Type Detail";
-    private static final String LENGTH_DETAIL_SHEET_NAME = "Length Detail";
-    private static final String DEFAULT_DETAIL_SHEET_NAME = "Default Detail";
-    private static final String NULLABLE_DETAIL_SHEET_NAME = "Nullable Detail";
+    private static final String SUMMARY_SHEET_NAME = "汇总";
+    private static final String TABLE_STATUS_SHEET_NAME = "表级状态";
+    private static final String FIELD_EXISTENCE_DETAIL_SHEET_NAME = "字段存在明细";
+    private static final String TYPE_DETAIL_SHEET_NAME = "类型明细";
+    private static final String LENGTH_DETAIL_SHEET_NAME = "长度明细";
+    private static final String DEFAULT_DETAIL_SHEET_NAME = "默认值明细";
+    private static final String NULLABLE_DETAIL_SHEET_NAME = "可空明细";
 
     private static final String FULL_EXISTS = "FULL_EXISTS";
     private static final String NOT_FULL_EXISTS = "NOT_FULL_EXISTS";
@@ -55,15 +55,15 @@ public class SummaryExcelReportWriter {
     private static final String MISSING_COLUMN = "MISSING_COLUMN";
     private static final String OTHER = "OTHER";
 
-    private static final String[] SUMMARY_PAIR_HEADERS = {"metric", "value"};
-    private static final String[] SUMMARY_RATIO_HEADERS = {"status", "tableCount", "ratio"};
+    private static final String[] SUMMARY_PAIR_HEADERS = {"指标", "值"};
+    private static final String[] SUMMARY_RATIO_HEADERS = {"状态", "表数量", "占比"};
     private static final String[] TABLE_STATUS_HEADERS = {
-            "sourceDatabase", "sourceSchema", "sourceTable", "targetSchema", "targetTable",
-            "fieldExistenceStatus", "typeStatus", "lengthStatus", "defaultStatus", "nullableStatus",
-            "riskLevel", "diffCategory"
+            "源数据库", "源Schema", "源表", "目标Schema", "目标表",
+            "字段存在状态", "类型状态", "长度状态", "默认值状态", "可空状态",
+            "风险等级", "差异分类"
     };
     private static final String[] DETAIL_HEADERS = {
-            "sourceDatabase", "sourceSchema", "sourceTable", "targetSchema", "targetTable", "columnName", "diffType", "detail"
+            "源数据库", "源Schema", "源表", "目标Schema", "目标表", "字段名", "差异类型", "说明"
     };
 
     private static final List<String> FIELD_EXISTENCE_ORDER = List.of(FULL_EXISTS, NOT_FULL_EXISTS);
@@ -266,19 +266,19 @@ public class SummaryExcelReportWriter {
         private void renderSummary() {
             writeSchemaDistributionBlock(0, 0);
             writeOverviewBlock(0, 3);
-            writeStatusBlock("fieldExistenceStatus", FIELD_EXISTENCE_ORDER, TableStats::fieldExistenceStatus, 0, 6);
-            writeStatusBlock("typeStatus", TYPE_STATUS_ORDER, TableStats::typeStatus, 4, 6);
-            writeStatusBlock("lengthStatus", LENGTH_STATUS_ORDER, TableStats::lengthStatus, 8, 6);
-            writeStatusBlock("defaultStatus", DEFAULT_STATUS_ORDER, TableStats::defaultStatus, 12, 6);
-            writeStatusBlock("nullableStatus", NULLABLE_STATUS_ORDER, TableStats::nullableStatus, 16, 6);
-            writeStatusBlock("riskLevel", RISK_LEVEL_ORDER, TableStats::riskLevel, 0, 10);
-            writeStatusBlock("diffCategory", DIFF_CATEGORY_ORDER, TableStats::diffCategory, 5, 10);
+            writeStatusBlock("字段存在状态", FIELD_EXISTENCE_ORDER, TableStats::fieldExistenceStatus, 0, 6);
+            writeStatusBlock("类型状态", TYPE_STATUS_ORDER, TableStats::typeStatus, 4, 6);
+            writeStatusBlock("长度状态", LENGTH_STATUS_ORDER, TableStats::lengthStatus, 8, 6);
+            writeStatusBlock("默认值状态", DEFAULT_STATUS_ORDER, TableStats::defaultStatus, 12, 6);
+            writeStatusBlock("可空状态", NULLABLE_STATUS_ORDER, TableStats::nullableStatus, 16, 6);
+            writeStatusBlock("风险等级", RISK_LEVEL_ORDER, TableStats::riskLevel, 0, 10);
+            writeStatusBlock("差异分类", DIFF_CATEGORY_ORDER, TableStats::diffCategory, 5, 10);
             writeRiskRuleBlock(0, 14);
         }
 
         private void writeSchemaDistributionBlock(int startRow, int startColumn) {
-            writeBlockTitle(summarySheet, startRow, startColumn, "view schema");
-            writeHeaders(summarySheet, startRow + 1, startColumn, new String[]{"viewSchema", "viewCount"});
+            writeBlockTitle(summarySheet, startRow, startColumn, "视图Schema");
+            writeHeaders(summarySheet, startRow + 1, startColumn, new String[]{"视图Schema", "视图数量"});
             Map<String, Integer> schemaCount = new LinkedHashMap<>();
             for (TableStats stats : tableStats.values()) {
                 schemaCount.merge(stats.targetSchemaName, 1, Integer::sum);
@@ -293,12 +293,12 @@ public class SummaryExcelReportWriter {
                 writeCell(row, startColumn + 1, Integer.toString(entry.getValue()), neutralStyle);
             }
             Row totalRow = row(summarySheet, rowIndex);
-            writeCell(totalRow, startColumn, "total", titleStyle);
+            writeCell(totalRow, startColumn, "合计", titleStyle);
             writeCell(totalRow, startColumn + 1, Integer.toString(tableStats.size()), titleStyle);
         }
 
         private void writeOverviewBlock(int startRow, int startColumn) {
-            writeBlockTitle(summarySheet, startRow, startColumn, "metric");
+            writeBlockTitle(summarySheet, startRow, startColumn, "指标概况");
             writeHeaders(summarySheet, startRow + 1, startColumn, SUMMARY_PAIR_HEADERS);
             int totalTables = tableStats.size();
             int fullExistsTables = countByStatus(TableStats::fieldExistenceStatus, FULL_EXISTS);
@@ -308,14 +308,14 @@ public class SummaryExcelReportWriter {
             int defaultMismatchTables = countByStatus(TableStats::defaultStatus, DEFAULT_MISMATCH);
             int nullableMismatchTables = countByStatus(TableStats::nullableStatus, NULLABLE_MISMATCH);
             String[][] metrics = {
-                    {"totalTables", Integer.toString(totalTables)},
-                    {"fullExistsTables", Integer.toString(fullExistsTables)},
-                    {"notFullExistsTables", Integer.toString(notFullExistsTables)},
-                    {"typeMismatchTables", Integer.toString(typeMismatchTables)},
-                    {"lengthMismatchTables", Integer.toString(lengthMismatchTables)},
-                    {"defaultMismatchTables", Integer.toString(defaultMismatchTables)},
-                    {"nullableMismatchTables", Integer.toString(nullableMismatchTables)},
-                    {"fullExistsRatio", ratio(fullExistsTables, totalTables)}
+                    {"总表数", Integer.toString(totalTables)},
+                    {"完全存在表数", Integer.toString(fullExistsTables)},
+                    {"不完全存在表数", Integer.toString(notFullExistsTables)},
+                    {"类型不一致表数", Integer.toString(typeMismatchTables)},
+                    {"长度不一致表数", Integer.toString(lengthMismatchTables)},
+                    {"默认值不一致表数", Integer.toString(defaultMismatchTables)},
+                    {"可空性不一致表数", Integer.toString(nullableMismatchTables)},
+                    {"完全存在占比", ratio(fullExistsTables, totalTables)}
             };
             int rowIndex = startRow + 2;
             for (String[] metric : metrics) {
@@ -344,25 +344,26 @@ public class SummaryExcelReportWriter {
             for (String status : orderedStatuses) {
                 Row row = row(summarySheet, rowIndex++);
                 CellStyle statusStyle = styleForStatus(status);
-                writeCell(row, startColumn, status, statusStyle);
+                String displayStatus = OutputTextFormatter.summaryStatusText(status);
+                writeCell(row, startColumn, displayStatus, statusStyle);
                 writeCell(row, startColumn + 1, Integer.toString(counts.get(status)), statusStyle);
                 writeCell(row, startColumn + 2, ratio(counts.get(status), totalTables), statusStyle);
             }
         }
 
         private void writeRiskRuleBlock(int startRow, int startColumn) {
-            writeBlockTitle(summarySheet, startRow, startColumn, "risk rules");
-            writeHeaders(summarySheet, startRow + 1, startColumn, new String[]{"condition", "riskLevel"});
+            writeBlockTitle(summarySheet, startRow, startColumn, "风险规则");
+            writeHeaders(summarySheet, startRow + 1, startColumn, new String[]{"判定条件", "风险等级"});
             String[][] rules = {
-                    {"No mismatch", LOW},
-                    {"Length/default/nullable mismatch", MEDIUM},
-                    {"Missing field/table or type mismatch", HIGH}
+                    {"没有任何差异", LOW},
+                    {"长度/默认值/可空性不一致", MEDIUM},
+                    {"字段缺失、表缺失或类型不一致", HIGH}
             };
             int rowIndex = startRow + 2;
             for (String[] rule : rules) {
                 Row row = row(summarySheet, rowIndex++);
                 writeCell(row, startColumn, rule[0], neutralStyle);
-                writeCell(row, startColumn + 1, rule[1], styleForStatus(rule[1]));
+                writeCell(row, startColumn + 1, OutputTextFormatter.summaryStatusText(rule[1]), styleForStatus(rule[1]));
             }
         }
 
@@ -376,13 +377,13 @@ public class SummaryExcelReportWriter {
                 writeCell(row, 2, stats.sourceTableName);
                 writeCell(row, 3, stats.targetSchemaName);
                 writeCell(row, 4, stats.targetTableName);
-                writeCell(row, 5, stats.fieldExistenceStatus(), styleForStatus(stats.fieldExistenceStatus()));
-                writeCell(row, 6, stats.typeStatus(), styleForStatus(stats.typeStatus()));
-                writeCell(row, 7, stats.lengthStatus(), styleForStatus(stats.lengthStatus()));
-                writeCell(row, 8, stats.defaultStatus(), styleForStatus(stats.defaultStatus()));
-                writeCell(row, 9, stats.nullableStatus(), styleForStatus(stats.nullableStatus()));
-                writeCell(row, 10, stats.riskLevel(), styleForStatus(stats.riskLevel()));
-                writeCell(row, 11, stats.diffCategory(), styleForStatus(stats.diffCategory()));
+                writeCell(row, 5, OutputTextFormatter.summaryStatusText(stats.fieldExistenceStatus()), styleForStatus(stats.fieldExistenceStatus()));
+                writeCell(row, 6, OutputTextFormatter.summaryStatusText(stats.typeStatus()), styleForStatus(stats.typeStatus()));
+                writeCell(row, 7, OutputTextFormatter.summaryStatusText(stats.lengthStatus()), styleForStatus(stats.lengthStatus()));
+                writeCell(row, 8, OutputTextFormatter.summaryStatusText(stats.defaultStatus()), styleForStatus(stats.defaultStatus()));
+                writeCell(row, 9, OutputTextFormatter.summaryStatusText(stats.nullableStatus()), styleForStatus(stats.nullableStatus()));
+                writeCell(row, 10, OutputTextFormatter.summaryStatusText(stats.riskLevel()), styleForStatus(stats.riskLevel()));
+                writeCell(row, 11, OutputTextFormatter.summaryStatusText(stats.diffCategory()), styleForStatus(stats.diffCategory()));
             }
         }
 
@@ -405,7 +406,7 @@ public class SummaryExcelReportWriter {
             DetailSheetState state = createDetailSheetState(baseSheetName);
             if (filtered.isEmpty()) {
                 Row emptyRow = row(state.currentSheet, state.nextRowIndex++);
-                writeCell(emptyRow, 0, "NO_DATA", neutralStyle);
+                writeCell(emptyRow, 0, OutputTextFormatter.summaryStatusText("NO_DATA"), neutralStyle);
                 return;
             }
             for (ColumnComparisonRecord record : filtered) {
@@ -418,7 +419,7 @@ public class SummaryExcelReportWriter {
                 writeCell(row, 4, firstNonBlank(record.getTargetTableName(), ""));
                 writeCell(row, 5, safe(record.getColumnName()));
                 String diffType = detailDiffType(record);
-                writeCell(row, 6, diffType, styleForStatus(diffType));
+                writeCell(row, 6, OutputTextFormatter.diffTypesText(diffType), styleForStatus(diffType));
                 writeCell(row, 7, detailMessage(record), styleForStatus(diffType));
             }
         }
@@ -571,9 +572,9 @@ public class SummaryExcelReportWriter {
 
         private String detailMessage(ColumnComparisonRecord record) {
             if (record.getMessage() != null && !record.getMessage().isBlank()) {
-                return record.getMessage();
+                return OutputTextFormatter.messageText(record.getMessage());
             }
-            return record.getOverallStatus() == ComparisonStatus.MATCH ? "MATCH" : "";
+            return record.getOverallStatus() == ComparisonStatus.MATCH ? OutputTextFormatter.comparisonStatusText(ComparisonStatus.MATCH) : "";
         }
 
         private String ratio(int count, int total) {

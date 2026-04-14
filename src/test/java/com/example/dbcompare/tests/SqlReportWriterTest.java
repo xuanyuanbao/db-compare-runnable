@@ -26,12 +26,15 @@ class SqlReportWriterTest {
         String sql = Files.readString(output, StandardCharsets.UTF_8);
         assertTrue(sql.contains("DROP TABLE IF EXISTS `compare_detail_tmp`;"), "sql output should recreate the target table for MySQL imports");
         assertTrue(sql.contains("CREATE TABLE IF NOT EXISTS `compare_detail_tmp`"), "sql output should include MySQL create table syntax");
-        assertTrue(sql.contains("`sourceDatabase` VARCHAR(128)"), "sql output should keep the detail columns in the ddl");
-        assertTrue(sql.contains("`sourceExists` TINYINT(1)"), "sql output should use MySQL-friendly boolean storage");
+        assertTrue(sql.contains("`源数据库` VARCHAR(128)"), "sql output should keep the localized detail columns in the ddl");
+        assertTrue(sql.contains("`源端存在` TINYINT(1)"), "sql output should use MySQL-friendly boolean storage");
         assertTrue(sql.contains("ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;"), "sql output should use a MySQL-friendly table definition");
         assertTrue(sql.contains("INSERT INTO `compare_detail_tmp`"), "sql output should include insert statements");
         assertTrue(sql.contains("),\n(") || sql.contains("),\r\n("), "sql output should batch multiple rows into one insert");
         assertTrue(sql.contains("'O''Reilly \\\\ default\\nline'"), "sql output should escape quotes, backslashes, and new lines for MySQL");
+        assertTrue(sql.contains("'不一致'"), "sql output should localize status values");
+        assertTrue(sql.contains("'目标端缺字段'"), "sql output should localize diff types");
+        assertTrue(sql.contains("'字段仅存在于源端'"), "sql output should localize messages");
     }
 
     private ColumnComparisonRecord record(String columnName) {

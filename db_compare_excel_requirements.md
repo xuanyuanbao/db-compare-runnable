@@ -7,19 +7,19 @@
 ## 2. 输出目标
 
 新的汇总 Excel 保持“少量汇总 + 分类型明细”的结构：
-- `Summary`
-- `Table Status`
-- `Field Existence Detail`
-- `Type Detail`
-- `Length Detail`
-- `Default Detail`
-- `Nullable Detail`
+- `汇总`
+- `表级状态`
+- `字段存在明细`
+- `类型明细`
+- `长度明细`
+- `默认值明细`
+- `可空明细`
 
 其中：
-- `Summary`：集中展示总览、占比、风险规则和 schema 分布
-- `Summary`：集中展示总览、占比、风险规则和 schema 分布，并通过颜色增强状态区分
-- `Table Status`：按表级输出 5 类对比状态
+- `汇总`：集中展示总览、占比、风险规则和 schema 分布，并通过颜色增强状态区分
+- `表级状态`：按表级输出 5 类对比状态
 - 各 Detail sheet：每种问题类型单独一个 sheet，超大数据量时继续拆成 `_2`、`_3`
+- 导出表头、状态值、说明文案默认使用中文
 
 ## 3. 统计范围
 
@@ -84,35 +84,35 @@ Java 侧规则：
 - `HIGH`
   - 存在字段缺失、表缺失、表歧义或类型不一致
 
-## 6. Summary Sheet 设计
+## 6. 汇总 Sheet 设计
 
-`Summary` 需要在一个 sheet 里集中排版以下信息：
+`汇总` 需要在一个 sheet 里集中排版以下信息：
 
 ### 6.1 视图 schema 划分
 
 字段：
-- `viewSchema`
-- `viewCount`
+- `视图Schema`
+- `视图数量`
 
 说明：
 - 按目标 schema 统计表数或 view 数
-- 最后一行输出 `total`
+- 最后一行输出 `合计`
 
 ### 6.2 总体概况
 
 字段：
-- `metric`
-- `value`
+- `指标`
+- `值`
 
 至少包含：
-- `totalTables`
-- `fullExistsTables`
-- `notFullExistsTables`
-- `typeMismatchTables`
-- `lengthMismatchTables`
-- `defaultMismatchTables`
-- `nullableMismatchTables`
-- `fullExistsRatio`
+- `总表数`
+- `完全存在表数`
+- `不完全存在表数`
+- `类型不一致表数`
+- `长度不一致表数`
+- `默认值不一致表数`
+- `可空性不一致表数`
+- `完全存在占比`
 
 ### 6.3 五类状态占比
 
@@ -141,11 +141,11 @@ Java 侧规则：
 - `ratio`
 
 状态包括：
-- `FULL_MATCH`
-- `MISSING_COLUMN`
-- `TYPE_MISMATCH`
-- `LENGTH_MISMATCH`
-- `OTHER`
+- `完全一致`
+- `字段缺失`
+- `类型不一致`
+- `长度不一致`
+- `其他差异`
 
 ### 6.5 风险等级占比
 
@@ -155,9 +155,9 @@ Java 侧规则：
 - `ratio`
 
 状态包括：
-- `LOW`
-- `MEDIUM`
-- `HIGH`
+- `低`
+- `中`
+- `高`
 
 ### 6.6 风险规则说明
 
@@ -166,27 +166,27 @@ Java 侧规则：
 - `riskLevel`
 
 至少包含：
-- `No mismatch -> LOW`
-- `Length/default/nullable mismatch -> MEDIUM`
-- `Missing field/table or type mismatch -> HIGH`
+- `没有任何差异 -> 低`
+- `长度/默认值/可空性不一致 -> 中`
+- `字段缺失、表缺失或类型不一致 -> 高`
 
-## 7. Table Status Sheet 设计
+## 7. 表级状态 Sheet 设计
 
-sheet 名称：`Table Status`
+sheet 名称：`表级状态`
 
 字段：
-- `sourceDatabase`
-- `sourceSchema`
-- `sourceTable`
-- `targetSchema`
-- `targetTable`
-- `fieldExistenceStatus`
-- `typeStatus`
-- `lengthStatus`
-- `defaultStatus`
-- `nullableStatus`
-- `riskLevel`
-- `diffCategory`
+- `源数据库`
+- `源Schema`
+- `源表`
+- `目标Schema`
+- `目标表`
+- `字段存在状态`
+- `类型状态`
+- `长度状态`
+- `默认值状态`
+- `可空状态`
+- `风险等级`
+- `差异分类`
 
 用途：
 - 直接按表查看整体状态
@@ -195,26 +195,26 @@ sheet 名称：`Table Status`
 ## 8. Detail Sheet 设计
 
 sheet 名称：
-- `Field Existence Detail`
-- `Type Detail`
-- `Length Detail`
-- `Default Detail`
-- `Nullable Detail`
+- `字段存在明细`
+- `类型明细`
+- `长度明细`
+- `默认值明细`
+- `可空明细`
 
 每个 Detail sheet 字段一致：
-- `sourceDatabase`
-- `sourceSchema`
-- `sourceTable`
-- `targetSchema`
-- `targetTable`
-- `columnName`
-- `diffType`
-- `detail`
+- `源数据库`
+- `源Schema`
+- `源表`
+- `目标Schema`
+- `目标表`
+- `字段名`
+- `差异类型`
+- `说明`
 
-当某个 Detail sheet 无数据时，输出 `NO_DATA` 标记。
+当某个 Detail sheet 无数据时，输出 `无数据` 标记。
 当某类问题数据量超出单个 sheet 视觉或行数承载时，继续输出：
-- `Field Existence Detail_2`
-- `Type Detail_2`
+- `字段存在明细_2`
+- `类型明细_2`
 - ...
 
 ## 9. 技术要求
@@ -228,8 +228,8 @@ sheet 名称：
 
 ## 10. 验收标准
 
-- 汇总 Excel 至少包含 `Summary`、`Table Status` 和 5 个分类型 Detail sheet
-- Summary 中能同时看到 5 类对比类型的概况、占比、风险规则、schema 分布
-- Table Status 能按表级输出 5 类状态
+- 汇总 Excel 至少包含 `汇总`、`表级状态` 和 5 个分类型 Detail sheet
+- `汇总` 中能同时看到 5 类对比类型的概况、占比、风险规则、schema 分布
+- `表级状态` 能按表级输出 5 类状态
 - Detail 能按 5 类问题拆成多个 sheet 输出明细
 - 统计结果与字段级原始记录一致

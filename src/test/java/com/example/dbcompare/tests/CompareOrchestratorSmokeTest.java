@@ -48,7 +48,7 @@ public final class CompareOrchestratorSmokeTest {
                 "smoke test should create excel report");
         TestSupport.assertTrue(Files.exists(Path.of(config.getOutput().getSqlPath())),
                 "smoke test should create sql report");
-        TestSupport.assertTrue(Files.readString(Path.of(config.getOutput().getSummaryPath())).contains("diffCount=4"),
+        TestSupport.assertTrue(Files.readString(Path.of(config.getOutput().getSummaryPath())).contains("差异数量=4"),
                 "summary output should contain the expected diff count");
     }
 }

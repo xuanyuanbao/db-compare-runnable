@@ -33,69 +33,71 @@ class SummaryExcelReportWriterTest {
 
         try (InputStream inputStream = Files.newInputStream(output);
              XSSFWorkbook workbook = new XSSFWorkbook(inputStream)) {
-            assertEquals("Summary", workbook.getSheetAt(0).getSheetName(), "summary sheet should be first");
-            assertEquals("Table Status", workbook.getSheetAt(1).getSheetName(), "table status sheet should be second");
-            assertEquals("Field Existence Detail", workbook.getSheetAt(2).getSheetName(), "field existence detail sheet should be third");
-            assertEquals("Type Detail", workbook.getSheetAt(3).getSheetName(), "type detail sheet should be present");
-            assertEquals("Length Detail", workbook.getSheetAt(4).getSheetName(), "length detail sheet should be present");
-            assertEquals("Default Detail", workbook.getSheetAt(5).getSheetName(), "default detail sheet should be present");
-            assertEquals("Nullable Detail", workbook.getSheetAt(6).getSheetName(), "nullable detail sheet should be present");
+            assertEquals("汇总", workbook.getSheetAt(0).getSheetName(), "summary sheet should be first");
+            assertEquals("表级状态", workbook.getSheetAt(1).getSheetName(), "table status sheet should be second");
+            assertEquals("字段存在明细", workbook.getSheetAt(2).getSheetName(), "field existence detail sheet should be third");
+            assertEquals("类型明细", workbook.getSheetAt(3).getSheetName(), "type detail sheet should be present");
+            assertEquals("长度明细", workbook.getSheetAt(4).getSheetName(), "length detail sheet should be present");
+            assertEquals("默认值明细", workbook.getSheetAt(5).getSheetName(), "default detail sheet should be present");
+            assertEquals("可空明细", workbook.getSheetAt(6).getSheetName(), "nullable detail sheet should be present");
 
-            assertEquals("view schema", workbook.getSheet("Summary").getRow(0).getCell(0).getStringCellValue(), "summary should render schema block title");
-            assertEquals("TGT_A", workbook.getSheet("Summary").getRow(2).getCell(0).getStringCellValue(), "summary should aggregate target schema");
-            assertEquals("5", workbook.getSheet("Summary").getRow(2).getCell(1).getStringCellValue(), "summary should count tables per target schema");
+            assertEquals("视图Schema", workbook.getSheet("汇总").getRow(0).getCell(0).getStringCellValue(), "summary should render schema block title");
+            assertEquals("TGT_A", workbook.getSheet("汇总").getRow(2).getCell(0).getStringCellValue(), "summary should aggregate target schema");
+            assertEquals("5", workbook.getSheet("汇总").getRow(2).getCell(1).getStringCellValue(), "summary should count tables per target schema");
 
-            assertEquals("metric", workbook.getSheet("Summary").getRow(0).getCell(3).getStringCellValue(), "summary should render overview block title");
-            assertEquals("totalTables", workbook.getSheet("Summary").getRow(2).getCell(3).getStringCellValue(), "overview should list total table metric");
-            assertEquals("5", workbook.getSheet("Summary").getRow(2).getCell(4).getStringCellValue(), "overview should count unique tables");
-            assertEquals("nullableMismatchTables", workbook.getSheet("Summary").getRow(8).getCell(3).getStringCellValue(), "overview should include nullable metric");
-            assertEquals("0", workbook.getSheet("Summary").getRow(8).getCell(4).getStringCellValue(), "overview should count nullable mismatch tables");
-            assertEquals("80.00%", workbook.getSheet("Summary").getRow(9).getCell(4).getStringCellValue(), "overview should calculate full exists ratio");
+            assertEquals("指标概况", workbook.getSheet("汇总").getRow(0).getCell(3).getStringCellValue(), "summary should render overview block title");
+            assertEquals("总表数", workbook.getSheet("汇总").getRow(2).getCell(3).getStringCellValue(), "overview should list total table metric");
+            assertEquals("5", workbook.getSheet("汇总").getRow(2).getCell(4).getStringCellValue(), "overview should count unique tables");
+            assertEquals("可空性不一致表数", workbook.getSheet("汇总").getRow(8).getCell(3).getStringCellValue(), "overview should include nullable metric");
+            assertEquals("0", workbook.getSheet("汇总").getRow(8).getCell(4).getStringCellValue(), "overview should count nullable mismatch tables");
+            assertEquals("80.00%", workbook.getSheet("汇总").getRow(9).getCell(4).getStringCellValue(), "overview should calculate full exists ratio");
 
-            assertEquals("fieldExistenceStatus", workbook.getSheet("Summary").getRow(0).getCell(6).getStringCellValue(), "summary should include field existence block");
-            assertEquals("4", workbook.getSheet("Summary").getRow(2).getCell(7).getStringCellValue(), "field existence summary should count fully existing tables");
-            assertEquals("1", workbook.getSheet("Summary").getRow(3).getCell(7).getStringCellValue(), "field existence summary should count non fully existing tables");
+            assertEquals("字段存在状态", workbook.getSheet("汇总").getRow(0).getCell(6).getStringCellValue(), "summary should include field existence block");
+            assertEquals("4", workbook.getSheet("汇总").getRow(2).getCell(7).getStringCellValue(), "field existence summary should count fully existing tables");
+            assertEquals("1", workbook.getSheet("汇总").getRow(3).getCell(7).getStringCellValue(), "field existence summary should count non fully existing tables");
+            assertEquals("完全存在", workbook.getSheet("汇总").getRow(2).getCell(6).getStringCellValue(), "field existence summary should localize status text");
 
-            assertEquals("typeStatus", workbook.getSheet("Summary").getRow(4).getCell(6).getStringCellValue(), "summary should include type block");
-            assertEquals("1", workbook.getSheet("Summary").getRow(7).getCell(7).getStringCellValue(), "type summary should count type mismatch tables");
-            assertEquals("lengthStatus", workbook.getSheet("Summary").getRow(8).getCell(6).getStringCellValue(), "summary should include length block");
-            assertEquals("1", workbook.getSheet("Summary").getRow(11).getCell(7).getStringCellValue(), "length summary should count length mismatch tables");
-            assertEquals("defaultStatus", workbook.getSheet("Summary").getRow(12).getCell(6).getStringCellValue(), "summary should include default block");
-            assertEquals("1", workbook.getSheet("Summary").getRow(15).getCell(7).getStringCellValue(), "default summary should count default mismatch tables");
+            assertEquals("类型状态", workbook.getSheet("汇总").getRow(4).getCell(6).getStringCellValue(), "summary should include type block");
+            assertEquals("1", workbook.getSheet("汇总").getRow(7).getCell(7).getStringCellValue(), "type summary should count type mismatch tables");
+            assertEquals("长度状态", workbook.getSheet("汇总").getRow(8).getCell(6).getStringCellValue(), "summary should include length block");
+            assertEquals("1", workbook.getSheet("汇总").getRow(11).getCell(7).getStringCellValue(), "length summary should count length mismatch tables");
+            assertEquals("默认值状态", workbook.getSheet("汇总").getRow(12).getCell(6).getStringCellValue(), "summary should include default block");
+            assertEquals("1", workbook.getSheet("汇总").getRow(15).getCell(7).getStringCellValue(), "default summary should count default mismatch tables");
 
-            assertEquals("nullableStatus", workbook.getSheet("Summary").getRow(16).getCell(6).getStringCellValue(), "summary should include nullable block in the main status column");
-            assertEquals("5", workbook.getSheet("Summary").getRow(18).getCell(7).getStringCellValue(), "nullable summary should count matching tables");
-            assertEquals("riskLevel", workbook.getSheet("Summary").getRow(0).getCell(10).getStringCellValue(), "summary should include risk block");
-            assertEquals("1", workbook.getSheet("Summary").getRow(2).getCell(11).getStringCellValue(), "risk summary should count low risk tables");
-            assertEquals("2", workbook.getSheet("Summary").getRow(3).getCell(11).getStringCellValue(), "risk summary should count medium risk tables");
-            assertEquals("2", workbook.getSheet("Summary").getRow(4).getCell(11).getStringCellValue(), "risk summary should count high risk tables");
-            assertEquals("diffCategory", workbook.getSheet("Summary").getRow(5).getCell(10).getStringCellValue(), "summary should include diff category block");
-            assertEquals("1", workbook.getSheet("Summary").getRow(7).getCell(11).getStringCellValue(), "diff summary should count full match tables");
-            assertEquals("1", workbook.getSheet("Summary").getRow(8).getCell(11).getStringCellValue(), "diff summary should count missing-column tables");
-            assertEquals("1", workbook.getSheet("Summary").getRow(9).getCell(11).getStringCellValue(), "diff summary should count type mismatch tables");
-            assertEquals("1", workbook.getSheet("Summary").getRow(10).getCell(11).getStringCellValue(), "diff summary should count length mismatch tables");
-            assertEquals("1", workbook.getSheet("Summary").getRow(11).getCell(11).getStringCellValue(), "diff summary should count other tables");
+            assertEquals("可空状态", workbook.getSheet("汇总").getRow(16).getCell(6).getStringCellValue(), "summary should include nullable block in the main status column");
+            assertEquals("5", workbook.getSheet("汇总").getRow(18).getCell(7).getStringCellValue(), "nullable summary should count matching tables");
+            assertEquals("风险等级", workbook.getSheet("汇总").getRow(0).getCell(10).getStringCellValue(), "summary should include risk block");
+            assertEquals("1", workbook.getSheet("汇总").getRow(2).getCell(11).getStringCellValue(), "risk summary should count low risk tables");
+            assertEquals("2", workbook.getSheet("汇总").getRow(3).getCell(11).getStringCellValue(), "risk summary should count medium risk tables");
+            assertEquals("2", workbook.getSheet("汇总").getRow(4).getCell(11).getStringCellValue(), "risk summary should count high risk tables");
+            assertEquals("差异分类", workbook.getSheet("汇总").getRow(5).getCell(10).getStringCellValue(), "summary should include diff category block");
+            assertEquals("1", workbook.getSheet("汇总").getRow(7).getCell(11).getStringCellValue(), "diff summary should count full match tables");
+            assertEquals("1", workbook.getSheet("汇总").getRow(8).getCell(11).getStringCellValue(), "diff summary should count missing-column tables");
+            assertEquals("1", workbook.getSheet("汇总").getRow(9).getCell(11).getStringCellValue(), "diff summary should count type mismatch tables");
+            assertEquals("1", workbook.getSheet("汇总").getRow(10).getCell(11).getStringCellValue(), "diff summary should count length mismatch tables");
+            assertEquals("1", workbook.getSheet("汇总").getRow(11).getCell(11).getStringCellValue(), "diff summary should count other tables");
 
-            assertEquals("risk rules", workbook.getSheet("Summary").getRow(0).getCell(14).getStringCellValue(), "summary should include risk rules");
-            assertEquals("No mismatch", workbook.getSheet("Summary").getRow(2).getCell(14).getStringCellValue(), "risk rules should describe low risk");
-            assertEquals("LOW", workbook.getSheet("Summary").getRow(2).getCell(15).getStringCellValue(), "risk rules should map low risk");
+            assertEquals("风险规则", workbook.getSheet("汇总").getRow(0).getCell(14).getStringCellValue(), "summary should include risk rules");
+            assertEquals("没有任何差异", workbook.getSheet("汇总").getRow(2).getCell(14).getStringCellValue(), "risk rules should describe low risk");
+            assertEquals("低", workbook.getSheet("汇总").getRow(2).getCell(15).getStringCellValue(), "risk rules should map low risk");
 
-            short fullExistsColor = workbook.getSheet("Summary").getRow(2).getCell(6).getCellStyle().getFillForegroundColor();
-            short riskHighColor = workbook.getSheet("Summary").getRow(4).getCell(10).getCellStyle().getFillForegroundColor();
-            short missingColumnColor = workbook.getSheet("Table Status").getRow(3).getCell(11).getCellStyle().getFillForegroundColor();
+            short fullExistsColor = workbook.getSheet("汇总").getRow(2).getCell(6).getCellStyle().getFillForegroundColor();
+            short riskHighColor = workbook.getSheet("汇总").getRow(4).getCell(10).getCellStyle().getFillForegroundColor();
+            short missingColumnColor = workbook.getSheet("表级状态").getRow(3).getCell(11).getCellStyle().getFillForegroundColor();
             assertNotEquals(0, fullExistsColor, "summary status cells should have a fill color");
             assertNotEquals(fullExistsColor, riskHighColor, "high risk should use a different highlight than positive status");
             assertEquals(riskHighColor, missingColumnColor, "table status should reuse strong highlight for severe mismatch categories");
 
-            assertEquals("TABLE_MISSING", workbook.getSheet("Table Status").getRow(3).getCell(2).getStringCellValue(), "table status sheet should list the missing-field table");
-            assertEquals("NOT_FULL_EXISTS", workbook.getSheet("Table Status").getRow(3).getCell(5).getStringCellValue(), "table status sheet should classify missing columns as not fully existing");
-            assertEquals("HIGH", workbook.getSheet("Table Status").getRow(3).getCell(10).getStringCellValue(), "table status sheet should classify missing columns as high risk");
+            assertEquals("TABLE_MISSING", workbook.getSheet("表级状态").getRow(3).getCell(2).getStringCellValue(), "table status sheet should list the missing-field table");
+            assertEquals("不完全存在", workbook.getSheet("表级状态").getRow(3).getCell(5).getStringCellValue(), "table status sheet should classify missing columns as not fully existing");
+            assertEquals("高", workbook.getSheet("表级状态").getRow(3).getCell(10).getStringCellValue(), "table status sheet should classify missing columns as high risk");
 
-            assertEquals("TABLE_MISSING", workbook.getSheet("Field Existence Detail").getRow(1).getCell(2).getStringCellValue(), "field existence detail should keep missing table row");
-            assertEquals("TABLE_TYPE", workbook.getSheet("Type Detail").getRow(1).getCell(2).getStringCellValue(), "type detail should keep type mismatch row");
-            assertEquals("TABLE_LENGTH", workbook.getSheet("Length Detail").getRow(1).getCell(2).getStringCellValue(), "length detail should keep length mismatch row");
-            assertEquals("TABLE_DEFAULT", workbook.getSheet("Default Detail").getRow(1).getCell(2).getStringCellValue(), "default detail should keep default mismatch row");
-            assertEquals("NO_DATA", workbook.getSheet("Nullable Detail").getRow(1).getCell(0).getStringCellValue(), "nullable detail should display no-data marker when empty");
+            assertEquals("TABLE_MISSING", workbook.getSheet("字段存在明细").getRow(1).getCell(2).getStringCellValue(), "field existence detail should keep missing table row");
+            assertEquals("目标端缺字段", workbook.getSheet("字段存在明细").getRow(1).getCell(6).getStringCellValue(), "field existence detail should localize diff type");
+            assertEquals("TABLE_TYPE", workbook.getSheet("类型明细").getRow(1).getCell(2).getStringCellValue(), "type detail should keep type mismatch row");
+            assertEquals("TABLE_LENGTH", workbook.getSheet("长度明细").getRow(1).getCell(2).getStringCellValue(), "length detail should keep length mismatch row");
+            assertEquals("TABLE_DEFAULT", workbook.getSheet("默认值明细").getRow(1).getCell(2).getStringCellValue(), "default detail should keep default mismatch row");
+            assertEquals("无数据", workbook.getSheet("可空明细").getRow(1).getCell(0).getStringCellValue(), "nullable detail should display no-data marker when empty");
         }
     }
 

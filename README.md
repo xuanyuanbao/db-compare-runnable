@@ -16,6 +16,7 @@
 - 支持 MySQL 可执行 SQL 导出
 - 支持大结果集 Excel 分 sheet 输出
 - 支持简化版汇总 Excel 输出
+- 导出默认使用中文表头、中文状态值和中文说明
 
 ## 运行方式
 
@@ -94,60 +95,61 @@ Gradle 已内置常用 JDBC 驱动：
 
 ### 明细 Excel
 
-明细 Excel 输出全量字段记录：
-- `MATCH`
-- `MISMATCH`
-- `NOT_APPLICABLE`
+明细 Excel 输出全量字段记录，状态值默认使用中文：
+- `一致`
+- `不一致`
+- `不适用`
 
 当单个 sheet 超过 `.xlsx` 限制时会自动拆分为：
-- `Detail`
-- `Detail_2`
-- `Detail_3`
+- `明细`
+- `明细_2`
+- `明细_3`
 - ...
 
 ### 汇总 Excel
 
 汇总 Excel 现在采用“少量汇总 + 分类型明细”的结构：
-- `Summary`
-- `Table Status`
-- `Field Existence Detail`
-- `Type Detail`
-- `Length Detail`
-- `Default Detail`
-- `Nullable Detail`
+- `汇总`
+- `表级状态`
+- `字段存在明细`
+- `类型明细`
+- `长度明细`
+- `默认值明细`
+- `可空明细`
 
-`Summary` sheet 会把信息集中排版在一个页签里，包含：
+`汇总` sheet 会把信息集中排版在一个页签里，包含：
 - 视图 schema 划分
 - 5 种比对类型的简单概况与占比
 - 风险等级划分
 - diff 分类占比
 - 风险等级规则
 - 状态色高亮，方便快速区分一致、一般风险和高风险
+- 中文表头、中文状态值，便于直接交付业务侧查看
 
-`Table Status` sheet 输出表级汇总结果，字段包括：
-- `sourceDatabase`
-- `sourceSchema`
-- `sourceTable`
-- `targetSchema`
-- `targetTable`
-- `fieldExistenceStatus`
-- `typeStatus`
-- `lengthStatus`
-- `defaultStatus`
-- `nullableStatus`
-- `riskLevel`
-- `diffCategory`
+`表级状态` sheet 输出表级汇总结果，字段包括：
+- `源数据库`
+- `源Schema`
+- `源表`
+- `目标Schema`
+- `目标表`
+- `字段存在状态`
+- `类型状态`
+- `长度状态`
+- `默认值状态`
+- `可空状态`
+- `风险等级`
+- `差异分类`
 
 5 类 detail 现在拆成独立 sheet，便于大数据量查看：
-- `Field Existence Detail`
-- `Type Detail`
-- `Length Detail`
-- `Default Detail`
-- `Nullable Detail`
+- `字段存在明细`
+- `类型明细`
+- `长度明细`
+- `默认值明细`
+- `可空明细`
 
 如果某一类明细数据特别多，还会继续拆成：
-- `Field Existence Detail_2`
-- `Type Detail_2`
+- `字段存在明细_2`
+- `类型明细_2`
 - ...
 
 ### SQL 导出

@@ -22,15 +22,15 @@ import java.nio.file.Path;
 import java.util.List;
 
 public class ExcelReportWriter {
-    private static final String DETAIL_SHEET_NAME = "Detail";
+    private static final String DETAIL_SHEET_NAME = "明细";
     static final String[] DETAIL_HEADERS = {
-            "sourceDatabase", "sourceSchema", "sourceTable", "targetSchema", "targetTable", "columnName",
-            "sourceExists", "targetExists",
-            "sourceType", "targetType", "typeStatus",
-            "sourceLength", "targetLength", "lengthStatus",
-            "sourceDefault", "targetDefault", "defaultStatus",
-            "sourceNullable", "targetNullable", "nullableStatus",
-            "overallStatus", "diffTypes", "message"
+            "源数据库", "源Schema", "源表", "目标Schema", "目标表", "字段名",
+            "源端存在", "目标端存在",
+            "源类型", "目标类型", "类型状态",
+            "源长度", "目标长度", "长度状态",
+            "源默认值", "目标默认值", "默认值状态",
+            "源端可空", "目标端可空", "可空状态",
+            "总体状态", "差异类型", "说明"
     };
 
     private final int maxRowsPerSheet;
@@ -132,8 +132,8 @@ public class ExcelReportWriter {
                 writeCell(row, columnIndex++, record.getTargetSchemaName(), null);
                 writeCell(row, columnIndex++, record.getTargetTableName(), null);
                 writeCell(row, columnIndex++, record.getColumnName(), null);
-                writeCell(row, columnIndex++, Boolean.toString(record.isSourceColumnExists()), null);
-                writeCell(row, columnIndex++, Boolean.toString(record.isTargetColumnExists()), null);
+                writeCell(row, columnIndex++, OutputTextFormatter.boolText(record.isSourceColumnExists()), null);
+                writeCell(row, columnIndex++, OutputTextFormatter.boolText(record.isTargetColumnExists()), null);
                 writeCell(row, columnIndex++, record.getSourceType(), null);
                 writeCell(row, columnIndex++, record.getTargetType(), null);
                 writeCell(row, columnIndex++, statusText(record.getTypeStatus()), statusStyle(record.getTypeStatus()));
@@ -143,12 +143,12 @@ public class ExcelReportWriter {
                 writeCell(row, columnIndex++, record.getSourceDefaultValue(), null);
                 writeCell(row, columnIndex++, record.getTargetDefaultValue(), null);
                 writeCell(row, columnIndex++, statusText(record.getDefaultStatus()), statusStyle(record.getDefaultStatus()));
-                writeCell(row, columnIndex++, record.getSourceNullable(), null);
-                writeCell(row, columnIndex++, record.getTargetNullable(), null);
+                writeCell(row, columnIndex++, OutputTextFormatter.nullableText(record.getSourceNullable()), null);
+                writeCell(row, columnIndex++, OutputTextFormatter.nullableText(record.getTargetNullable()), null);
                 writeCell(row, columnIndex++, statusText(record.getNullableStatus()), statusStyle(record.getNullableStatus()));
                 writeCell(row, columnIndex++, statusText(record.getOverallStatus()), statusStyle(record.getOverallStatus()));
-                writeCell(row, columnIndex++, record.getDiffTypes(), null);
-                writeCell(row, columnIndex, record.getMessage(), null);
+                writeCell(row, columnIndex++, OutputTextFormatter.diffTypesText(record.getDiffTypes()), null);
+                writeCell(row, columnIndex, OutputTextFormatter.messageText(record.getMessage()), null);
             }
         }
 
@@ -201,7 +201,7 @@ public class ExcelReportWriter {
         }
 
         private String statusText(ComparisonStatus status) {
-            return status == null ? "" : status.name();
+            return OutputTextFormatter.comparisonStatusText(status);
         }
 
         private CellStyle statusStyle(ComparisonStatus status) {

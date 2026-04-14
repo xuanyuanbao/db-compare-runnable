@@ -11,13 +11,17 @@ import java.nio.file.Path;
 import java.util.List;
 
 public class CsvReportWriter {
+    private static final String[] HEADERS = {
+            "源数据库", "源Schema", "源表", "目标Schema", "目标表", "字段名", "差异类型", "源值", "目标值", "说明"
+    };
+
     public CsvReportSession open(Path path) {
         try {
             if (path.getParent() != null) {
                 Files.createDirectories(path.getParent());
             }
             BufferedWriter writer = Files.newBufferedWriter(path, StandardCharsets.UTF_8);
-            writer.write("sourceDatabase,sourceSchema,sourceTable,targetSchema,targetTable,columnName,diffType,sourceValue,targetValue,message");
+            writer.write(String.join(",", HEADERS));
             writer.newLine();
             return new CsvReportSession(writer);
         } catch (IOException e) {
@@ -47,13 +51,13 @@ public class CsvReportWriter {
                     writer.write(',');
                     writer.write(csv(record.getColumnName()));
                     writer.write(',');
-                    writer.write(csv(record.getDiffType() == null ? null : record.getDiffType().name()));
+                    writer.write(csv(OutputTextFormatter.diffTypeText(record.getDiffType())));
                     writer.write(',');
                     writer.write(csv(record.getSourceValue()));
                     writer.write(',');
                     writer.write(csv(record.getTargetValue()));
                     writer.write(',');
-                    writer.write(csv(record.getMessage()));
+                    writer.write(csv(OutputTextFormatter.messageText(record.getMessage())));
                     writer.newLine();
                 }
             } catch (IOException e) {

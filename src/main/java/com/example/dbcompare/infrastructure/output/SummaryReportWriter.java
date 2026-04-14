@@ -13,13 +13,14 @@ public class SummaryReportWriter {
         try {
             if (path.getParent() != null) Files.createDirectories(path.getParent());
             StringBuilder builder = new StringBuilder();
-            builder.append("sourceCount=").append(summary.getSourceCount()).append(System.lineSeparator());
-            builder.append("sourceSchemaCount=").append(summary.getSourceSchemaCount()).append(System.lineSeparator());
-            builder.append("sourceTableCount=").append(summary.getSourceTableCount()).append(System.lineSeparator());
-            builder.append("diffCount=").append(summary.getDiffCount()).append(System.lineSeparator());
-            builder.append("diffTypeCount:").append(System.lineSeparator());
+            builder.append("源库数量=").append(summary.getSourceCount()).append(System.lineSeparator());
+            builder.append("源Schema数量=").append(summary.getSourceSchemaCount()).append(System.lineSeparator());
+            builder.append("源表数量=").append(summary.getSourceTableCount()).append(System.lineSeparator());
+            builder.append("差异数量=").append(summary.getDiffCount()).append(System.lineSeparator());
+            builder.append("差异类型统计:").append(System.lineSeparator());
             for (Map.Entry<?, Integer> entry : summary.getDiffTypeCount().entrySet()) {
-                builder.append("  ").append(entry.getKey()).append('=').append(entry.getValue()).append(System.lineSeparator());
+                builder.append("  ").append(OutputTextFormatter.diffTypesText(String.valueOf(entry.getKey())))
+                        .append('=').append(entry.getValue()).append(System.lineSeparator());
             }
             Files.writeString(path, builder.toString(), StandardCharsets.UTF_8);
         } catch (IOException e) {
