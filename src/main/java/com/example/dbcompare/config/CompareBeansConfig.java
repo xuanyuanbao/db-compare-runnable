@@ -5,6 +5,7 @@ import com.example.dbcompare.infrastructure.output.ExcelReportWriter;
 import com.example.dbcompare.infrastructure.output.SqlReportWriter;
 import com.example.dbcompare.infrastructure.output.SummaryExcelReportWriter;
 import com.example.dbcompare.infrastructure.output.SummaryReportWriter;
+import com.example.dbcompare.infrastructure.output.TargetViewLineageExcelWriter;
 import com.example.dbcompare.service.CompareOrchestrator;
 import com.example.dbcompare.service.MappingService;
 import com.example.dbcompare.service.MetadataLoadService;
@@ -56,6 +57,11 @@ public class CompareBeansConfig {
     }
 
     @Bean
+    public TargetViewLineageExcelWriter targetViewLineageExcelWriter() {
+        return new TargetViewLineageExcelWriter();
+    }
+
+    @Bean
     public TargetViewLineageService targetViewLineageService() {
         return new TargetViewLineageService();
     }
@@ -72,6 +78,7 @@ public class CompareBeansConfig {
                                                    CsvReportWriter csvReportWriter,
                                                    ExcelReportWriter excelReportWriter,
                                                    SqlReportWriter sqlReportWriter,
+                                                   TargetViewLineageExcelWriter targetViewLineageExcelWriter,
                                                    SummaryReportWriter summaryReportWriter,
                                                    SummaryExcelReportWriter summaryExcelReportWriter,
                                                    TargetViewLineageService targetViewLineageService) {
@@ -82,6 +89,7 @@ public class CompareBeansConfig {
                 csvReportWriter,
                 excelReportWriter,
                 sqlReportWriter,
+                targetViewLineageExcelWriter,
                 summaryReportWriter,
                 summaryExcelReportWriter,
                 targetViewLineageService);

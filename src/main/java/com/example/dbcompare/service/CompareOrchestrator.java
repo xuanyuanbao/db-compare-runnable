@@ -13,11 +13,13 @@ import com.example.dbcompare.domain.model.SourceTableLoadResult;
 import com.example.dbcompare.domain.model.TableComparisonResult;
 import com.example.dbcompare.domain.model.TableMeta;
 import com.example.dbcompare.domain.model.TargetViewLineageEntry;
+import com.example.dbcompare.domain.model.TargetViewLineageReportRow;
 import com.example.dbcompare.infrastructure.output.CsvReportWriter;
 import com.example.dbcompare.infrastructure.output.ExcelReportWriter;
 import com.example.dbcompare.infrastructure.output.SqlReportWriter;
 import com.example.dbcompare.infrastructure.output.SummaryExcelReportWriter;
 import com.example.dbcompare.infrastructure.output.SummaryReportWriter;
+import com.example.dbcompare.infrastructure.output.TargetViewLineageExcelWriter;
 import com.example.dbcompare.util.NameNormalizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,6 +44,7 @@ public class CompareOrchestrator {
     private final CsvReportWriter csvReportWriter;
     private final ExcelReportWriter excelReportWriter;
     private final SqlReportWriter sqlReportWriter;
+    private final TargetViewLineageExcelWriter targetViewLineageExcelWriter;
     private final SummaryReportWriter summaryReportWriter;
     private final SummaryExcelReportWriter summaryExcelReportWriter;
     private final TargetViewLineageService targetViewLineageService;
@@ -55,7 +58,8 @@ public class CompareOrchestrator {
                                SqlReportWriter sqlReportWriter,
                                SummaryReportWriter summaryReportWriter) {
         this(metadataLoadService, mappingService, tableCompareService, csvReportWriter, excelReportWriter,
-                sqlReportWriter, summaryReportWriter, new SummaryExcelReportWriter(), new TargetViewLineageService(), new ViewParser());
+                sqlReportWriter, new TargetViewLineageExcelWriter(), summaryReportWriter,
+                new SummaryExcelReportWriter(), new TargetViewLineageService(), new ViewParser());
     }
 
     public CompareOrchestrator(MetadataLoadService metadataLoadService,
@@ -67,7 +71,8 @@ public class CompareOrchestrator {
                                SummaryReportWriter summaryReportWriter,
                                SummaryExcelReportWriter summaryExcelReportWriter) {
         this(metadataLoadService, mappingService, tableCompareService, csvReportWriter, excelReportWriter,
-                sqlReportWriter, summaryReportWriter, summaryExcelReportWriter, new TargetViewLineageService(), new ViewParser());
+                sqlReportWriter, new TargetViewLineageExcelWriter(), summaryReportWriter,
+                summaryExcelReportWriter, new TargetViewLineageService(), new ViewParser());
     }
 
     public CompareOrchestrator(MetadataLoadService metadataLoadService,
@@ -76,11 +81,13 @@ public class CompareOrchestrator {
                                CsvReportWriter csvReportWriter,
                                ExcelReportWriter excelReportWriter,
                                SqlReportWriter sqlReportWriter,
+                               TargetViewLineageExcelWriter targetViewLineageExcelWriter,
                                SummaryReportWriter summaryReportWriter,
                                SummaryExcelReportWriter summaryExcelReportWriter,
                                TargetViewLineageService targetViewLineageService) {
         this(metadataLoadService, mappingService, tableCompareService, csvReportWriter, excelReportWriter,
-                sqlReportWriter, summaryReportWriter, summaryExcelReportWriter, targetViewLineageService, new ViewParser());
+                sqlReportWriter, targetViewLineageExcelWriter, summaryReportWriter,
+                summaryExcelReportWriter, targetViewLineageService, new ViewParser());
     }
 
     CompareOrchestrator(MetadataLoadService metadataLoadService,
@@ -89,6 +96,7 @@ public class CompareOrchestrator {
                         CsvReportWriter csvReportWriter,
                         ExcelReportWriter excelReportWriter,
                         SqlReportWriter sqlReportWriter,
+                        TargetViewLineageExcelWriter targetViewLineageExcelWriter,
                         SummaryReportWriter summaryReportWriter,
                         SummaryExcelReportWriter summaryExcelReportWriter,
                         TargetViewLineageService targetViewLineageService,
@@ -99,6 +107,7 @@ public class CompareOrchestrator {
         this.csvReportWriter = csvReportWriter;
         this.excelReportWriter = excelReportWriter;
         this.sqlReportWriter = sqlReportWriter;
+        this.targetViewLineageExcelWriter = targetViewLineageExcelWriter;
         this.summaryReportWriter = summaryReportWriter;
         this.summaryExcelReportWriter = summaryExcelReportWriter;
         this.targetViewLineageService = targetViewLineageService;
@@ -173,6 +182,10 @@ public class CompareOrchestrator {
         Map<String, DataSourceInfo> sourceIndex = indexSources(compareConfig.getSources());
         Set<String> visitedSourceSchemas = new HashSet<>();
 
+        TargetViewLineageExcelWriter.TargetViewLineageExcelSession lineageExcelSession = shouldWriteTargetViewLineage(compareConfig)
+                ? targetViewLineageExcelWriter.open(Path.of(compareConfig.getOutput().getTargetViewLineageExcelPath()))
+                : null;
+
         try (CsvReportWriter.CsvReportSession csvSession = csvReportWriter.open(Path.of(compareConfig.getOutput().getCsvPath()));
              ExcelReportWriter.ExcelReportSession excelSession = excelReportWriter.open(Path.of(compareConfig.getOutput().getExcelPath()));
              SqlReportWriter.SqlReportSession sqlSession = sqlReportWriter.open(
@@ -208,6 +221,10 @@ public class CompareOrchestrator {
                 SourceTableLoadResult sourceTableLoadResult = metadataLoadService.loadSourceTable(sourceInfo, task.getSourceSchema(), task.getSourceTable());
                 SchemaMeta targetSchema = targetMetadata.getSchemas().get(NameNormalizer.normalize(task.getTargetViewSchema()));
                 TableMeta targetView = targetSchema == null ? null : targetSchema.getTables().get(NameNormalizer.normalize(task.getTargetView()));
+                String sourceSchemaName = sourceTableLoadResult.getSchemaName() != null
+                        ? sourceTableLoadResult.getSchemaName()
+                        : task.getSourceSchema();
+                appendTargetViewLineage(lineageExcelSession, task, sourceSchemaName, lineageEntries);
 
                 TableComparisonResult comparisonResult;
                 if (sourceTableLoadResult.isAmbiguous()) {
@@ -219,9 +236,6 @@ public class CompareOrchestrator {
                             DiffType.SOURCE_TABLE_AMBIGUOUS,
                             sourceTableLoadResult.getMessage());
                 } else {
-                    String sourceSchemaName = sourceTableLoadResult.getSchemaName() != null
-                            ? sourceTableLoadResult.getSchemaName()
-                            : task.getSourceSchema();
                     comparisonResult = tableCompareService.compareDetailed(sourceInfo,
                             sourceSchemaName,
                             sourceTableLoadResult.getTableMeta(),
@@ -234,10 +248,57 @@ public class CompareOrchestrator {
             }
         } catch (IOException e) {
             throw new IllegalStateException("Failed to close report writers", e);
+        } finally {
+            if (lineageExcelSession != null) {
+                try {
+                    lineageExcelSession.close();
+                } catch (IOException e) {
+                    throw new IllegalStateException("Failed to close target view lineage Excel report", e);
+                }
+            }
         }
 
         summaryReportWriter.write(Path.of(compareConfig.getOutput().getSummaryPath()), summary);
         return summary;
+    }
+
+    private boolean shouldWriteTargetViewLineage(CompareConfig compareConfig) {
+        return compareConfig.getMode() == CompareMode.TARGET_DRIVEN
+                && resolveTargetObjectType(compareConfig) == CompareObjectType.VIEW
+                && compareConfig.getOutput().getTargetViewLineageExcelPath() != null
+                && !compareConfig.getOutput().getTargetViewLineageExcelPath().isBlank();
+    }
+
+    private void appendTargetViewLineage(TargetViewLineageExcelWriter.TargetViewLineageExcelSession lineageExcelSession,
+                                         CompareTask task,
+                                         String sourceSchemaName,
+                                         List<TargetViewLineageEntry> lineageEntries) {
+        if (lineageExcelSession == null) {
+            return;
+        }
+        List<TargetViewLineageReportRow> rows = new ArrayList<>();
+        if (lineageEntries.isEmpty()) {
+            rows.add(new TargetViewLineageReportRow(
+                    task.getSourceDatabase(),
+                    sourceSchemaName,
+                    task.getSourceTable(),
+                    "",
+                    "",
+                    task.getTargetView(),
+                    task.getTargetViewSchema()));
+        } else {
+            for (TargetViewLineageEntry lineageEntry : lineageEntries) {
+                rows.add(new TargetViewLineageReportRow(
+                        task.getSourceDatabase(),
+                        sourceSchemaName,
+                        task.getSourceTable(),
+                        lineageEntry.getTargetTableSchema(),
+                        lineageEntry.getTargetTableName(),
+                        task.getTargetView(),
+                        task.getTargetViewSchema()));
+            }
+        }
+        lineageExcelSession.append(rows);
     }
 
     private List<CompareTask> buildTargetDrivenTasks(CompareConfig compareConfig, DatabaseMeta targetMetadata) {

@@ -19,14 +19,17 @@ import com.example.dbcompare.infrastructure.output.ExcelReportWriter;
 import com.example.dbcompare.infrastructure.output.SqlReportWriter;
 import com.example.dbcompare.infrastructure.output.SummaryExcelReportWriter;
 import com.example.dbcompare.infrastructure.output.SummaryReportWriter;
+import com.example.dbcompare.infrastructure.output.TargetViewLineageExcelWriter;
 import com.example.dbcompare.service.CompareOrchestrator;
 import com.example.dbcompare.service.MappingService;
 import com.example.dbcompare.service.MetadataLoadService;
 import com.example.dbcompare.service.TableCompareService;
 import com.example.dbcompare.service.TargetViewLineageService;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -36,7 +39,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class TargetDrivenCompareOrchestratorTest {
     @Test
-    void comparesOnlyTargetDrivenTasksAndLoadsSourceTablesOneByOne(@TempDir Path tempDir) throws Exception {
+    void keepsOriginalReportsAndGeneratesDedicatedTargetViewLineageWorkbook(@TempDir Path tempDir) throws Exception {
         CompareConfig config = new CompareConfig();
         config.setMode(CompareMode.TARGET_DRIVEN);
 
@@ -51,6 +54,7 @@ class TargetDrivenCompareOrchestratorTest {
         target.setType(DatabaseType.SNAPSHOT);
         target.setViewOnly(true);
         config.setTarget(target);
+        config.getOptions().setObjectType(CompareObjectType.VIEW);
 
         SchemaMapping schemaMapping = new SchemaMapping();
         schemaMapping.setSourceDatabaseName("DB2_A");
@@ -68,6 +72,7 @@ class TargetDrivenCompareOrchestratorTest {
         config.getOutput().setCsvPath(tempDir.resolve("report.csv").toString());
         config.getOutput().setExcelPath(tempDir.resolve("detail.xlsx").toString());
         config.getOutput().setSummaryExcelPath(tempDir.resolve("summary.xlsx").toString());
+        config.getOutput().setTargetViewLineageExcelPath(tempDir.resolve("target-view-lineage.xlsx").toString());
         config.getOutput().setSqlPath(tempDir.resolve("detail.sql").toString());
         config.getOutput().setSummaryPath(tempDir.resolve("summary.txt").toString());
 
@@ -79,6 +84,7 @@ class TargetDrivenCompareOrchestratorTest {
                 new CsvReportWriter(),
                 new ExcelReportWriter(),
                 new SqlReportWriter(),
+                new TargetViewLineageExcelWriter(),
                 new SummaryReportWriter(),
                 new SummaryExcelReportWriter(),
                 new StubTargetViewLineageService());
@@ -90,15 +96,25 @@ class TargetDrivenCompareOrchestratorTest {
         assertEquals(1, metadataLoadService.singleTableLoadCount, "target-driven mode should load one source table per task");
         assertEquals(1, summary.getDiffCount(), "the targeted compare should preserve the column mismatch result");
         assertTrue(Files.exists(Path.of(config.getOutput().getCsvPath())), "csv report should be created");
-        assertTrue(Files.exists(Path.of(config.getOutput().getExcelPath())), "excel report should be created");
+        assertTrue(Files.exists(Path.of(config.getOutput().getExcelPath())), "detail excel report should be created");
         assertTrue(Files.exists(Path.of(config.getOutput().getSummaryExcelPath())), "summary excel report should be created");
+        assertTrue(Files.exists(Path.of(config.getOutput().getTargetViewLineageExcelPath())), "target view lineage excel report should be created");
         assertTrue(Files.exists(Path.of(config.getOutput().getSqlPath())), "sql report should be created");
+
         String csv = Files.readString(Path.of(config.getOutput().getCsvPath()));
-        assertTrue(csv.contains("目标ViewSchema"), "csv report should expose target view columns");
-        assertTrue(csv.contains("OG_DB2_1"), "csv report should contain target view schema values");
-        assertTrue(csv.contains("CUSTOMER_VIEW"), "csv report should contain target view values");
-        assertTrue(csv.contains("ODS"), "csv report should contain target lineage table schema values");
-        assertTrue(csv.contains("CUSTOMER_BASE"), "csv report should contain target lineage table values");
+        assertTrue(csv.contains("目标Schema"), "main csv should keep the original target columns");
+        assertTrue(csv.contains("OG_DB2_1"), "main csv should continue exposing the main target schema");
+        assertTrue(csv.contains("CUSTOMER_VIEW"), "main csv should continue exposing the main target object");
+
+        try (InputStream inputStream = Files.newInputStream(Path.of(config.getOutput().getTargetViewLineageExcelPath()));
+             XSSFWorkbook workbook = new XSSFWorkbook(inputStream)) {
+            assertEquals("目标View血缘", workbook.getSheetAt(0).getSheetName(), "dedicated lineage workbook should use the new sheet");
+            assertEquals("目标基表Schema", workbook.getSheetAt(0).getRow(0).getCell(3).getStringCellValue(), "lineage workbook should expose target base table schema");
+            assertEquals("ODS", workbook.getSheetAt(0).getRow(1).getCell(3).getStringCellValue(), "lineage workbook should include lineage table schema rows");
+            assertEquals("CUSTOMER_BASE", workbook.getSheetAt(0).getRow(1).getCell(4).getStringCellValue(), "lineage workbook should include lineage table names");
+            assertEquals("CUSTOMER_VIEW", workbook.getSheetAt(0).getRow(1).getCell(5).getStringCellValue(), "lineage workbook should include target view name");
+            assertEquals("OG_DB2_1", workbook.getSheetAt(0).getRow(1).getCell(6).getStringCellValue(), "lineage workbook should include target view schema");
+        }
     }
 
     private static final class RecordingMetadataLoadService extends MetadataLoadService {

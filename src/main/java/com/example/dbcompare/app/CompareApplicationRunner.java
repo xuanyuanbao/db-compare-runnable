@@ -33,6 +33,7 @@ public class CompareApplicationRunner implements ApplicationRunner {
         log.info("Compare finished. diffCount={}", summary.getDiffCount());
         log.info("CSV report: {}", properties.getOutput().getCsvPath());
         log.info("Excel report: {}", properties.getOutput().getExcelPath());
+        log.info("Target view lineage Excel report: {}", properties.getOutput().getTargetViewLineageExcelPath());
         log.info("SQL report: {} (table={})", properties.getOutput().getSqlPath(), properties.getOutput().getSqlTableName());
         log.info("Summary report: {}", properties.getOutput().getSummaryPath());
     }

@@ -50,6 +50,7 @@ public final class ConfigLoaderTest {
         properties.setProperty("compare.options.sourceLoadThreads", "2");
         properties.setProperty("output.csvPath", "build/reports/result.csv");
         properties.setProperty("output.excelPath", "build/reports/result.xlsx");
+        properties.setProperty("output.target-view-lineage-excel-path", "build/reports/result-view-lineage.xlsx");
         properties.setProperty("output.sqlPath", "build/reports/result.sql");
         properties.setProperty("output.sqlTableName", "compare_detail_tmp");
         properties.setProperty("output.summaryPath", "build/reports/summary.txt");
@@ -90,6 +91,8 @@ public final class ConfigLoaderTest {
                 "csv output path should be loaded");
         TestSupport.assertEquals("build/reports/result.xlsx", config.getOutput().getExcelPath(),
                 "excel output path should be loaded");
+        TestSupport.assertEquals("build/reports/result-view-lineage.xlsx", config.getOutput().getTargetViewLineageExcelPath(),
+                "target view lineage excel path should be loaded");
         TestSupport.assertEquals("build/reports/result.sql", config.getOutput().getSqlPath(),
                 "sql output path should be loaded");
         TestSupport.assertEquals("compare_detail_tmp", config.getOutput().getSqlTableName(),

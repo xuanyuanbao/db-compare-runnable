@@ -1,297 +1,102 @@
-# 目标 View 血缘对比需求说明
+# 目标 View 血缘独立导出需求
 
 ## 1. 背景
 
 当前项目已经支持：
-- `FULL_SCAN` 全量比对
-- `TARGET_DRIVEN` 目标驱动比对
-- `TABLE / VIEW` 两种目标对象类型
+- `FULL_SCAN`
+- `TARGET_DRIVEN`
+- 目标侧 `TABLE / VIEW` 二选一比对
 
-但在以下配置下：
+在以下配置下：
 - `dbcompare.mode=TARGET_DRIVEN`
 - `dbcompare.options.object-type=VIEW`
 
-现有程序内部仍然沿用了旧的目标对象语义：
-- `targetSchema`
-- `targetTable`
+程序已经能够围绕目标 View 做比对，但业务希望新增一份更直观的血缘结果，专门展示：
 
-这在语义上已经不准确了。
+`sourceDatabase/sourceSchema/sourceTable -> targetTableSchema/targetTable -> targetView/targetViewSchema`
 
-因为当目标驱动模式的目标对象是 `VIEW` 时，真正的主目标对象应该是：
-- `targetViewSchema`
-- `targetView`
+同时要求：
+- 原有明细 Excel 不改
+- 原有汇总 Excel 不改
+- 只新增一份独立 Excel
 
-而不是：
-- `targetTableSchema`
-- `targetTable`
+## 2. 目标
 
-`targetTableSchema/targetTable` 在这个模式下只是该 `targetView` 血缘展开后的依赖表信息，不应继续充当主目标对象。
+新增一份独立的目标 View 血缘 Excel，用来展示目标 View 依赖了哪些目标基表。
 
-## 2. 核心目标
+这个新 Excel 只承载血缘关系，不承载字段级明细。
 
-在 `TARGET_DRIVEN + VIEW` 模式下，完成以下改造：
+## 3. 输出要求
 
-1. 将程序内部原先承载目标对象语义的：
-   - `targetSchema`
-   - `targetTable`
-   替换为：
-   - `targetViewSchema`
-   - `targetView`
+### 3.1 输出文件
 
-2. 在 `targetViewSchema + targetView` 的基础上，再向下展开：
-   - `targetTableSchema`
-   - `targetTable`
+新增输出文件：
+- `dbcompare.output.target-view-lineage-excel-path`
 
-3. 支持从 GaussDB 查询：
-   - 某个 `targetView` 依赖了哪些 `targetTable`
+默认值建议为：
+- `build/reports/default-target-view-lineage.xlsx`
 
-4. 在结果输出中同时体现：
-   - 当前比对针对哪个 `targetView`
-   - 该 `targetView` 依赖了哪些 `targetTable`
+### 3.2 工作簿结构
 
-## 3. 语义定义
+新工作簿当前只需要一个 sheet：
+- `目标View血缘`
 
-### 3.1 主目标对象
+### 3.3 字段顺序
 
-当配置满足：
-- `dbcompare.mode=TARGET_DRIVEN`
-- `dbcompare.options.object-type=VIEW`
+sheet 字段顺序固定为：
+- `源数据库`
+- `源Schema`
+- `源表`
+- `目标基表Schema`
+- `目标基表`
+- `目标View`
+- `目标ViewSchema`
 
-则主目标对象定义为：
-- `targetViewSchema`
-- `targetView`
+## 4. 数据来源
 
-这两个字段用于：
-- 组织 compare task
-- 组织目标对象匹配
-- 输出结果中的主目标信息
-- 作为该模式下的目标对象主键语义
+血缘关系方向是：
+- `targetView -> targetTable`
 
-### 3.2 血缘附加对象
+数据来源优先级：
+1. 如果配置了 `target.viewLineageFile`，优先读取外部血缘文件
+2. 否则在目标库为 GaussDB 时，直接查询系统视图获取血缘关系
 
-在主目标对象基础上，额外增加血缘展开字段：
-- `targetTableSchema`
-- `targetTable`
+## 5. 设计约束
 
-这两个字段用于表达：
-- 某个 `targetView` 依赖了哪些迁移后的目标表
+### 5.1 不改原有主报表
 
-注意：
-- `targetViewSchema` 和 `targetTableSchema` 不能默认相同
-- 一个 `targetView` 可能位于 schema A
-- 但它依赖的 `targetTable` 可能位于 schema B、schema C
+以下输出维持现状：
+- CSV
+- 明细 Excel
+- 汇总 Excel
+- SQL
 
-## 4. 关系模型
+也就是说：
+- 原有明细 Excel 继续保留 `目标Schema / 目标表`
+- 原有汇总 Excel 继续保留 `目标Schema / 目标表`
 
-### 4.1 新的关系方向
+新增的 View 血缘信息不挤进原有 sheet。
 
-这里的核心方向必须明确：
+### 5.2 去重规则
 
-- 不是 `targetTable -> targetView`
-- 而是 `targetView -> targetTable`
+如果同一条血缘关系在字段级比对过程中重复出现，只保留一条。
 
-也就是说，系统需要回答的问题是：
+唯一键按以下字段组合去重：
+- `源数据库`
+- `源Schema`
+- `源表`
+- `目标基表Schema`
+- `目标基表`
+- `目标View`
+- `目标ViewSchema`
 
-1. 某个源表最终对应哪个 `targetView`
-2. 某个 `targetView` 依赖了哪些 `targetTable`
+## 6. 验收标准
 
-因此新的组织顺序为：
+满足以下条件即可视为完成：
 
-`sourceDatabase/sourceSchema/sourceTable -> targetViewSchema/targetView -> targetTableSchema/targetTable`
-
-### 4.2 新的核心字段
-
-需求二输出至少要包含以下 7 个字段：
-
-- `sourceDatabase`
-- `sourceSchema`
-- `sourceTable`
-- `targetViewSchema`
-- `targetView`
-- `targetTableSchema`
-- `targetTable`
-
-其中：
-- 主目标对象字段是 `targetViewSchema + targetView`
-- 血缘展开字段是 `targetTableSchema + targetTable`
-
-## 5. 程序改造要求
-
-### 5.1 主目标字段替换
-
-在 `TARGET_DRIVEN + VIEW` 模式下，程序中原先使用以下字段承载目标对象语义的地方：
-- `targetSchema`
-- `targetTable`
-
-都需要切换为：
-- `targetViewSchema`
-- `targetView`
-
-适用范围包括但不限于：
-- compare task
-- 目标对象匹配
-- 内部结果模型
-- 导出表头
-- SQL 字段
-- Excel 明细
-- 汇总统计维度
-
-### 5.2 血缘展开字段追加
-
-在完成主目标对象替换后，再新增以下字段：
-- `targetTableSchema`
-- `targetTable`
-
-这两个字段不替代主目标对象，只作为血缘展开信息追加输出。
-
-### 5.3 组织规则
-
-在该模式下，任务主键优先按以下字段组织：
-- `sourceDatabase`
-- `sourceSchema`
-- `sourceTable`
-- `targetViewSchema`
-- `targetView`
-
-如果需要展示 View 依赖关系，再附加：
-- `targetTableSchema`
-- `targetTable`
-
-## 6. 数据来源
-
-`targetView -> targetTable` 的关系不由人工维护，而是由 GaussDB 查询得到。
-
-第一版要求：
-- 支持从 GaussDB 查询指定 `targetView` 的依赖表
-- 查询结果至少能返回：
-  - `target_view_schema`
-  - `target_view_name`
-  - `target_table_schema`
-  - `target_table_name`
-
-第一版默认只实现：
-- GaussDB
-
-第一版暂不实现：
-- 非 GaussDB 的血缘查询
-- 多层嵌套 View 的递归展开
-- 复杂别名和跨 schema 的高级消歧
-
-## 7. 建议新增模型
-
-### 7.1 View 血缘关系模型
-
-建议新增中间模型或中间表：
-- `target_view_lineage`
-
-建议字段：
-- `target_view_schema`
-- `target_view_name`
-- `target_table_schema`
-- `target_table_name`
-- `lineage_source`
-- `load_time`
-
-### 7.2 任务模型
-
-建议扩展或重构 compare task，使其在 `TARGET_DRIVEN + VIEW` 模式下显式包含：
-- `source_database`
-- `source_schema`
-- `source_table`
-- `target_view_schema`
-- `target_view`
-- `target_table_schema`
-- `target_table`
-- `task_type`
-
-说明：
-- `task_type=TARGET_DRIVEN_VIEW`
-- 此时主目标键为 `target_view_schema + target_view`
-- `target_table_schema + target_table` 为血缘附加信息
-
-## 8. 输出要求
-
-### 8.1 明细输出
-
-在 `TARGET_DRIVEN + VIEW` 模式下，结果明细至少要输出：
-- `sourceDatabase`
-- `sourceSchema`
-- `sourceTable`
-- `targetViewSchema`
-- `targetView`
-- `targetTableSchema`
-- `targetTable`
-
-### 8.2 字段含义要求
-
-要求明确区分：
-- 主目标对象字段
-  - `targetViewSchema`
-  - `targetView`
-- 血缘展开字段
-  - `targetTableSchema`
-  - `targetTable`
-
-不能再把：
-- `targetTableSchema`
-- `targetTable`
-
-当成该模式下的主目标对象字段。
-
-### 8.3 汇总要求
-
-汇总中建议新增按以下维度统计：
-- `targetViewSchema`
-- `targetView`
-- `targetView` 依赖的目标表数量
-- 每个 `targetView` 的问题数量
-
-## 9. 第一版范围
-
-第一版建议只做：
-
-1. 明确替换程序内部的主目标对象语义
-   - `targetSchema/targetTable`
-   - 替换为 `targetViewSchema/targetView`
-
-2. 增加 GaussDB View 血缘查询
-   - 查询 `targetView -> targetTable`
-
-3. 在现有结果中追加输出：
-   - `targetTableSchema`
-   - `targetTable`
-
-4. 同步修改：
-   - Excel
-   - SQL
-   - CSV
-   - 汇总逻辑
-   - 单元测试
-   - 文档
-
-## 10. 验收标准
-
-满足以下条件即视为需求二第一版完成：
-
-1. 当配置为：
-   - `dbcompare.mode=TARGET_DRIVEN`
-   - `dbcompare.options.object-type=VIEW`
-
-   程序内部与输出中的主目标对象语义已切换为：
-   - `targetViewSchema`
-   - `targetView`
-
-2. 输出中至少包含 7 个字段：
-   - `sourceDatabase`
-   - `sourceSchema`
-   - `sourceTable`
-   - `targetViewSchema`
-   - `targetView`
-   - `targetTableSchema`
-   - `targetTable`
-
-3. `targetView -> targetTable` 的关系来自 GaussDB 查询
-
-4. `targetViewSchema` 与 `targetTableSchema` 可以不同，并能正确输出
-
-5. 现有测试、文档和导出结构同步更新
+1. 在 `TARGET_DRIVEN + VIEW` 模式下，新增一份独立 Excel
+2. 原有明细 Excel 和汇总 Excel 结构不变
+3. 新 Excel 中包含 7 个字段，顺序与需求一致
+4. 新 Excel 中同一条血缘关系不会重复输出
+5. 示例配置可以直接生成演示结果
+6. 单元测试和 README 同步更新

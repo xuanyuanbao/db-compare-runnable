@@ -14,10 +14,10 @@ import java.util.List;
 
 public class SqlReportWriter {
     private static final int INSERT_BATCH_SIZE = 500;
-    private static final int SOURCE_EXISTS_INDEX = 8;
-    private static final int TARGET_EXISTS_INDEX = 9;
+    private static final int SOURCE_EXISTS_INDEX = 6;
+    private static final int TARGET_EXISTS_INDEX = 7;
     private static final String[] COLUMN_TYPES = {
-            "VARCHAR(128)", "VARCHAR(128)", "VARCHAR(128)", "VARCHAR(128)", "VARCHAR(128)", "VARCHAR(256)", "VARCHAR(512)", "VARCHAR(128)",
+            "VARCHAR(128)", "VARCHAR(128)", "VARCHAR(128)", "VARCHAR(128)", "VARCHAR(128)", "VARCHAR(128)",
             "TINYINT(1)", "TINYINT(1)",
             "VARCHAR(128)", "VARCHAR(128)", "VARCHAR(32)",
             "VARCHAR(64)", "VARCHAR(64)", "VARCHAR(32)",
@@ -159,10 +159,8 @@ public class SqlReportWriter {
                     record.getSourceDatabaseName(),
                     record.getSourceSchemaName(),
                     record.getSourceTableName(),
-                    record.getTargetViewSchemaName(),
-                    record.getTargetViewName(),
-                    record.getTargetLineageTableSchemaName(),
-                    record.getTargetLineageTableName(),
+                    record.getTargetSchemaName(),
+                    record.getTargetTableName(),
                     record.getColumnName(),
                     record.isSourceColumnExists() ? "1" : "0",
                     record.isTargetColumnExists() ? "1" : "0",

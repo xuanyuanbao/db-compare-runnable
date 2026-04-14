@@ -24,7 +24,7 @@ import java.util.List;
 public class ExcelReportWriter {
     private static final String DETAIL_SHEET_NAME = "明细";
     static final String[] DETAIL_HEADERS = {
-            "源数据库", "源Schema", "源表", "目标ViewSchema", "目标View", "目标基表Schema", "目标基表", "字段名",
+            "源数据库", "源Schema", "源表", "目标Schema", "目标表", "字段名",
             "源端存在", "目标端存在",
             "源类型", "目标类型", "类型状态",
             "源长度", "目标长度", "长度状态",
@@ -67,7 +67,7 @@ public class ExcelReportWriter {
         if (columnIndex == DETAIL_HEADERS.length - 1) {
             return 60 * 256;
         }
-        if (columnIndex >= 10 && columnIndex <= 22) {
+        if (columnIndex >= 8 && columnIndex <= 20) {
             return 18 * 256;
         }
         return 20 * 256;
@@ -129,10 +129,8 @@ public class ExcelReportWriter {
                 writeCell(row, columnIndex++, record.getSourceDatabaseName(), null);
                 writeCell(row, columnIndex++, record.getSourceSchemaName(), null);
                 writeCell(row, columnIndex++, record.getSourceTableName(), null);
-                writeCell(row, columnIndex++, record.getTargetViewSchemaName(), null);
-                writeCell(row, columnIndex++, record.getTargetViewName(), null);
-                writeCell(row, columnIndex++, record.getTargetLineageTableSchemaName(), null);
-                writeCell(row, columnIndex++, record.getTargetLineageTableName(), null);
+                writeCell(row, columnIndex++, record.getTargetSchemaName(), null);
+                writeCell(row, columnIndex++, record.getTargetTableName(), null);
                 writeCell(row, columnIndex++, record.getColumnName(), null);
                 writeCell(row, columnIndex++, OutputTextFormatter.boolText(record.isSourceColumnExists()), null);
                 writeCell(row, columnIndex++, OutputTextFormatter.boolText(record.isTargetColumnExists()), null);

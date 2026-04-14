@@ -82,6 +82,7 @@ Gradle 已内置常用 JDBC 驱动：
 - `dbcompare.output.csv-path`
 - `dbcompare.output.excel-path`
 - `dbcompare.output.summary-excel-path`
+- `dbcompare.output.target-view-lineage-excel-path`
 - `dbcompare.output.sql-path`
 - `dbcompare.output.sql-table-name`
 - `dbcompare.output.summary-path`
@@ -92,6 +93,7 @@ Gradle 已内置常用 JDBC 驱动：
 - `build/reports/default-compare-report.csv`
 - `build/reports/default-compare-detail.xlsx`
 - `build/reports/default-compare-summary.xlsx`
+- `build/reports/default-target-view-lineage.xlsx`
 - `build/reports/default-compare-detail.sql`
 - `build/reports/default-compare-summary.txt`
 
@@ -101,19 +103,6 @@ Gradle 已内置常用 JDBC 驱动：
 - `一致`
 - `不一致`
 - `不适用`
-
-当配置为：
-- `dbcompare.mode=TARGET_DRIVEN`
-- `dbcompare.options.object-type=VIEW`
-
-明细输出会优先使用以下 7 个核心字段：
-- `sourceDatabase`
-- `sourceSchema`
-- `sourceTable`
-- `targetViewSchema`
-- `targetView`
-- `targetTableSchema`
-- `targetTable`
 
 当单个 sheet 超过 `.xlsx` 限制时会自动拆分为：
 - `明细`
@@ -166,6 +155,34 @@ Gradle 已内置常用 JDBC 驱动：
 - `字段存在明细_2`
 - `类型明细_2`
 - ...
+
+### 目标 View 血缘 Excel
+
+当配置为：
+- `dbcompare.mode=TARGET_DRIVEN`
+- `dbcompare.options.object-type=VIEW`
+
+程序会额外生成一份独立 Excel，不改动原有明细 Excel 和汇总 Excel。
+
+默认文件：
+- `build/reports/default-target-view-lineage.xlsx`
+
+该工作簿当前包含一个 sheet：
+- `目标View血缘`
+
+字段顺序固定为：
+- `源数据库`
+- `源Schema`
+- `源表`
+- `目标基表Schema`
+- `目标基表`
+- `目标View`
+- `目标ViewSchema`
+
+说明：
+- 原有主报表中的 `目标Schema / 目标表` 继续保留，避免影响已有查看习惯
+- 新增血缘 Excel 专门用来展示 `targetView -> targetTable` 的展开关系
+- 如果同一条血缘关系因字段级明细重复出现，导出时会自动去重
 
 ### SQL 导出
 

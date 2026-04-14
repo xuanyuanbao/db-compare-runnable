@@ -74,6 +74,10 @@ public class ConfigLoader {
         if (excelPath != null && !excelPath.isBlank()) config.getOutput().setExcelPath(excelPath.trim());
         String summaryExcelPath = firstNonBlank(properties.getProperty("output.summaryExcelPath"), properties.getProperty("output.summary-excel-path"));
         if (summaryExcelPath != null) config.getOutput().setSummaryExcelPath(summaryExcelPath);
+        String targetViewLineageExcelPath = firstNonBlank(
+                properties.getProperty("output.targetViewLineageExcelPath"),
+                properties.getProperty("output.target-view-lineage-excel-path"));
+        if (targetViewLineageExcelPath != null) config.getOutput().setTargetViewLineageExcelPath(targetViewLineageExcelPath);
         String sqlPath = properties.getProperty("output.sqlPath");
         if (sqlPath != null && !sqlPath.isBlank()) config.getOutput().setSqlPath(sqlPath.trim());
         String sqlTableName = properties.getProperty("output.sqlTableName");
