@@ -58,12 +58,12 @@ public class SummaryExcelReportWriter {
     private static final String[] SUMMARY_PAIR_HEADERS = {"指标", "值"};
     private static final String[] SUMMARY_RATIO_HEADERS = {"状态", "表数量", "占比"};
     private static final String[] TABLE_STATUS_HEADERS = {
-            "源数据库", "源Schema", "源表", "目标Schema", "目标表",
+            "源数据库", "源Schema", "源表", "目标ViewSchema", "目标View", "目标基表Schema", "目标基表",
             "字段存在状态", "类型状态", "长度状态", "默认值状态", "可空状态",
             "风险等级", "差异分类"
     };
     private static final String[] DETAIL_HEADERS = {
-            "源数据库", "源Schema", "源表", "目标Schema", "目标表", "字段名", "差异类型", "说明"
+            "源数据库", "源Schema", "源表", "目标ViewSchema", "目标View", "目标基表Schema", "目标基表", "字段名", "差异类型", "说明"
     };
 
     private static final List<String> FIELD_EXISTENCE_ORDER = List.of(FULL_EXISTS, NOT_FULL_EXISTS);
@@ -160,7 +160,7 @@ public class SummaryExcelReportWriter {
         if (headerCount == DETAIL_HEADERS.length && columnIndex == DETAIL_HEADERS.length - 1) {
             return 56 * 256;
         }
-        if (headerCount == TABLE_STATUS_HEADERS.length && columnIndex <= 4) {
+        if (headerCount == TABLE_STATUS_HEADERS.length && columnIndex <= 6) {
             return 18 * 256;
         }
         if (headerCount == TABLE_STATUS_HEADERS.length) {
@@ -256,10 +256,12 @@ public class SummaryExcelReportWriter {
             String sourceDatabase = safe(record.getSourceDatabaseName());
             String sourceSchema = firstNonBlank(record.getSourceSchemaName(), "UNKNOWN");
             String sourceTable = firstNonBlank(record.getSourceTableName(), "UNKNOWN");
-            String targetSchema = firstNonBlank(record.getTargetSchemaName(), "UNKNOWN");
-            String targetTable = firstNonBlank(record.getTargetTableName(), sourceTable, "UNKNOWN");
-            String key = String.join("|", sourceDatabase, sourceSchema, sourceTable, targetSchema, targetTable);
-            tableStats.computeIfAbsent(key, ignored -> new TableStats(sourceDatabase, sourceSchema, sourceTable, targetSchema, targetTable))
+            String targetViewSchema = firstNonBlank(record.getTargetViewSchemaName(), "UNKNOWN");
+            String targetView = firstNonBlank(record.getTargetViewName(), sourceTable, "UNKNOWN");
+            String targetTableSchema = firstNonBlank(record.getTargetLineageTableSchemaName(), "");
+            String targetTable = firstNonBlank(record.getTargetLineageTableName(), "");
+            String key = String.join("|", sourceDatabase, sourceSchema, sourceTable, targetViewSchema, targetView, targetTableSchema, targetTable);
+            tableStats.computeIfAbsent(key, ignored -> new TableStats(sourceDatabase, sourceSchema, sourceTable, targetViewSchema, targetView, targetTableSchema, targetTable))
                     .accept(record);
         }
 
@@ -281,7 +283,7 @@ public class SummaryExcelReportWriter {
             writeHeaders(summarySheet, startRow + 1, startColumn, new String[]{"视图Schema", "视图数量"});
             Map<String, Integer> schemaCount = new LinkedHashMap<>();
             for (TableStats stats : tableStats.values()) {
-                schemaCount.merge(stats.targetSchemaName, 1, Integer::sum);
+                schemaCount.merge(stats.targetViewSchemaName, 1, Integer::sum);
             }
             List<Map.Entry<String, Integer>> sortedEntries = new ArrayList<>(schemaCount.entrySet());
             sortedEntries.sort(Map.Entry.<String, Integer>comparingByValue(Comparator.reverseOrder())
@@ -375,15 +377,17 @@ public class SummaryExcelReportWriter {
                 writeCell(row, 0, stats.sourceDatabaseName);
                 writeCell(row, 1, stats.sourceSchemaName);
                 writeCell(row, 2, stats.sourceTableName);
-                writeCell(row, 3, stats.targetSchemaName);
-                writeCell(row, 4, stats.targetTableName);
-                writeCell(row, 5, OutputTextFormatter.summaryStatusText(stats.fieldExistenceStatus()), styleForStatus(stats.fieldExistenceStatus()));
-                writeCell(row, 6, OutputTextFormatter.summaryStatusText(stats.typeStatus()), styleForStatus(stats.typeStatus()));
-                writeCell(row, 7, OutputTextFormatter.summaryStatusText(stats.lengthStatus()), styleForStatus(stats.lengthStatus()));
-                writeCell(row, 8, OutputTextFormatter.summaryStatusText(stats.defaultStatus()), styleForStatus(stats.defaultStatus()));
-                writeCell(row, 9, OutputTextFormatter.summaryStatusText(stats.nullableStatus()), styleForStatus(stats.nullableStatus()));
-                writeCell(row, 10, OutputTextFormatter.summaryStatusText(stats.riskLevel()), styleForStatus(stats.riskLevel()));
-                writeCell(row, 11, OutputTextFormatter.summaryStatusText(stats.diffCategory()), styleForStatus(stats.diffCategory()));
+                writeCell(row, 3, stats.targetViewSchemaName);
+                writeCell(row, 4, stats.targetViewName);
+                writeCell(row, 5, stats.targetTableSchemaName);
+                writeCell(row, 6, stats.targetTableName);
+                writeCell(row, 7, OutputTextFormatter.summaryStatusText(stats.fieldExistenceStatus()), styleForStatus(stats.fieldExistenceStatus()));
+                writeCell(row, 8, OutputTextFormatter.summaryStatusText(stats.typeStatus()), styleForStatus(stats.typeStatus()));
+                writeCell(row, 9, OutputTextFormatter.summaryStatusText(stats.lengthStatus()), styleForStatus(stats.lengthStatus()));
+                writeCell(row, 10, OutputTextFormatter.summaryStatusText(stats.defaultStatus()), styleForStatus(stats.defaultStatus()));
+                writeCell(row, 11, OutputTextFormatter.summaryStatusText(stats.nullableStatus()), styleForStatus(stats.nullableStatus()));
+                writeCell(row, 12, OutputTextFormatter.summaryStatusText(stats.riskLevel()), styleForStatus(stats.riskLevel()));
+                writeCell(row, 13, OutputTextFormatter.summaryStatusText(stats.diffCategory()), styleForStatus(stats.diffCategory()));
             }
         }
 
@@ -415,12 +419,14 @@ public class SummaryExcelReportWriter {
                 writeCell(row, 0, safe(record.getSourceDatabaseName()));
                 writeCell(row, 1, firstNonBlank(record.getSourceSchemaName(), ""));
                 writeCell(row, 2, firstNonBlank(record.getSourceTableName(), ""));
-                writeCell(row, 3, firstNonBlank(record.getTargetSchemaName(), ""));
-                writeCell(row, 4, firstNonBlank(record.getTargetTableName(), ""));
-                writeCell(row, 5, safe(record.getColumnName()));
+                writeCell(row, 3, firstNonBlank(record.getTargetViewSchemaName(), ""));
+                writeCell(row, 4, firstNonBlank(record.getTargetViewName(), ""));
+                writeCell(row, 5, firstNonBlank(record.getTargetLineageTableSchemaName(), ""));
+                writeCell(row, 6, firstNonBlank(record.getTargetLineageTableName(), ""));
+                writeCell(row, 7, safe(record.getColumnName()));
                 String diffType = detailDiffType(record);
-                writeCell(row, 6, OutputTextFormatter.diffTypesText(diffType), styleForStatus(diffType));
-                writeCell(row, 7, detailMessage(record), styleForStatus(diffType));
+                writeCell(row, 8, OutputTextFormatter.diffTypesText(diffType), styleForStatus(diffType));
+                writeCell(row, 9, detailMessage(record), styleForStatus(diffType));
             }
         }
 
@@ -455,7 +461,9 @@ public class SummaryExcelReportWriter {
             sorted.sort(Comparator.comparing((TableStats stats) -> stats.sourceDatabaseName)
                     .thenComparing(stats -> stats.sourceSchemaName)
                     .thenComparing(stats -> stats.sourceTableName)
-                    .thenComparing(stats -> stats.targetSchemaName)
+                    .thenComparing(stats -> stats.targetViewSchemaName)
+                    .thenComparing(stats -> stats.targetViewName)
+                    .thenComparing(stats -> stats.targetTableSchemaName)
                     .thenComparing(stats -> stats.targetTableName));
             return sorted;
         }
@@ -631,7 +639,9 @@ public class SummaryExcelReportWriter {
         private final String sourceDatabaseName;
         private final String sourceSchemaName;
         private final String sourceTableName;
-        private final String targetSchemaName;
+        private final String targetViewSchemaName;
+        private final String targetViewName;
+        private final String targetTableSchemaName;
         private final String targetTableName;
         private final EnumSet<DiffType> diffTypes = EnumSet.noneOf(DiffType.class);
         private int diffCount;
@@ -645,12 +655,16 @@ public class SummaryExcelReportWriter {
         private TableStats(String sourceDatabaseName,
                            String sourceSchemaName,
                            String sourceTableName,
-                           String targetSchemaName,
+                           String targetViewSchemaName,
+                           String targetViewName,
+                           String targetTableSchemaName,
                            String targetTableName) {
             this.sourceDatabaseName = sourceDatabaseName;
             this.sourceSchemaName = sourceSchemaName;
             this.sourceTableName = sourceTableName;
-            this.targetSchemaName = targetSchemaName;
+            this.targetViewSchemaName = targetViewSchemaName;
+            this.targetViewName = targetViewName;
+            this.targetTableSchemaName = targetTableSchemaName;
             this.targetTableName = targetTableName;
         }
 

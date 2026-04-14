@@ -102,6 +102,7 @@ public class ConfigLoader {
         dataSourceInfo.setSchema(properties.getProperty(prefix + "schema"));
         dataSourceInfo.setViewOnly(boolValue(properties, prefix + "viewOnly", false));
         dataSourceInfo.setSnapshotFile(properties.getProperty(prefix + "snapshotFile"));
+        dataSourceInfo.setViewLineageFile(properties.getProperty(prefix + "viewLineageFile"));
         splitToList(properties.getProperty(prefix + "includeSchemas"), dataSourceInfo.getIncludeSchemas());
         splitToList(properties.getProperty(prefix + "excludeSchemas"), dataSourceInfo.getExcludeSchemas());
         splitToList(properties.getProperty(prefix + "includeTables"), dataSourceInfo.getIncludeTables());

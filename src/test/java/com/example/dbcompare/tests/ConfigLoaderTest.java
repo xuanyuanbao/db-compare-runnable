@@ -28,6 +28,7 @@ public final class ConfigLoaderTest {
         properties.setProperty("target.type", "SNAPSHOT");
         properties.setProperty("target.viewOnly", "true");
         properties.setProperty("target.snapshotFile", "examples/demo/gauss_target.csv");
+        properties.setProperty("target.viewLineageFile", "examples/demo-view-lineage/target_view_lineage.csv");
 
         properties.setProperty("mapping.count", "1");
         properties.setProperty("mapping.1.sourceDatabaseName", "AS400_A");
@@ -71,6 +72,8 @@ public final class ConfigLoaderTest {
                 "source include schemas should be split");
         TestSupport.assertTrue(config.getTarget().isViewOnly(),
                 "target viewOnly should be loaded");
+        TestSupport.assertEquals("examples/demo-view-lineage/target_view_lineage.csv", config.getTarget().getViewLineageFile(),
+                "target view lineage file should be loaded");
         TestSupport.assertEquals(1, config.getMappings().size(), "schema mapping count should be loaded");
         TestSupport.assertEquals(1, config.getTableMappings().size(), "table mapping count should be loaded");
         TestSupport.assertEquals(1, config.getIncludeSchemas().size(), "global include schemas should be loaded");

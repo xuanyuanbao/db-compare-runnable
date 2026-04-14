@@ -12,7 +12,7 @@ import java.util.List;
 
 public class CsvReportWriter {
     private static final String[] HEADERS = {
-            "源数据库", "源Schema", "源表", "目标Schema", "目标表", "字段名", "差异类型", "源值", "目标值", "说明"
+            "源数据库", "源Schema", "源表", "目标ViewSchema", "目标View", "目标基表Schema", "目标基表", "字段名", "差异类型", "源值", "目标值", "说明"
     };
 
     public CsvReportSession open(Path path) {
@@ -45,9 +45,13 @@ public class CsvReportWriter {
                     writer.write(',');
                     writer.write(csv(record.getSourceTableName()));
                     writer.write(',');
-                    writer.write(csv(record.getTargetSchemaName()));
+                    writer.write(csv(record.getTargetViewSchemaName()));
                     writer.write(',');
-                    writer.write(csv(record.getTargetTableName()));
+                    writer.write(csv(record.getTargetViewName()));
+                    writer.write(',');
+                    writer.write(csv(record.getTargetLineageTableSchemaName()));
+                    writer.write(',');
+                    writer.write(csv(record.getTargetLineageTableName()));
                     writer.write(',');
                     writer.write(csv(record.getColumnName()));
                     writer.write(',');

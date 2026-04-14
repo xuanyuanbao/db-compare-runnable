@@ -8,6 +8,8 @@ public class ColumnComparisonRecord {
     private String sourceTableName;
     private String targetSchemaName;
     private String targetTableName;
+    private String targetLineageTableSchemaName;
+    private String targetLineageTableName;
     private String columnName;
     private boolean sourceColumnExists;
     private boolean targetColumnExists;
@@ -37,6 +39,14 @@ public class ColumnComparisonRecord {
     public void setTargetSchemaName(String targetSchemaName) { this.targetSchemaName = targetSchemaName; }
     public String getTargetTableName() { return targetTableName; }
     public void setTargetTableName(String targetTableName) { this.targetTableName = targetTableName; }
+    public String getTargetViewSchemaName() { return targetSchemaName; }
+    public void setTargetViewSchemaName(String targetViewSchemaName) { this.targetSchemaName = targetViewSchemaName; }
+    public String getTargetViewName() { return targetTableName; }
+    public void setTargetViewName(String targetViewName) { this.targetTableName = targetViewName; }
+    public String getTargetLineageTableSchemaName() { return targetLineageTableSchemaName; }
+    public void setTargetLineageTableSchemaName(String targetLineageTableSchemaName) { this.targetLineageTableSchemaName = targetLineageTableSchemaName; }
+    public String getTargetLineageTableName() { return targetLineageTableName; }
+    public void setTargetLineageTableName(String targetLineageTableName) { this.targetLineageTableName = targetLineageTableName; }
     public String getColumnName() { return columnName; }
     public void setColumnName(String columnName) { this.columnName = columnName; }
     public boolean isSourceColumnExists() { return sourceColumnExists; }

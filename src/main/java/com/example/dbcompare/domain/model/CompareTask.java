@@ -1,31 +1,46 @@
 package com.example.dbcompare.domain.model;
 
 public class CompareTask {
-    private String sourceDb;
+    private String sourceDatabase;
     private String sourceSchema;
-    private String tableName;
-    private String targetSchema;
-    private String viewName;
+    private String sourceTable;
+    private String targetViewSchema;
+    private String targetView;
+    private String targetTableSchema;
+    private String targetTable;
 
     public CompareTask() {
     }
 
-    public CompareTask(String sourceDb, String sourceSchema, String tableName, String targetSchema, String viewName) {
-        this.sourceDb = sourceDb;
+    public CompareTask(String sourceDatabase, String sourceSchema, String sourceTable, String targetViewSchema, String targetView) {
+        this.sourceDatabase = sourceDatabase;
         this.sourceSchema = sourceSchema;
-        this.tableName = tableName;
-        this.targetSchema = targetSchema;
-        this.viewName = viewName;
+        this.sourceTable = sourceTable;
+        this.targetViewSchema = targetViewSchema;
+        this.targetView = targetView;
     }
 
-    public String getSourceDb() { return sourceDb; }
-    public void setSourceDb(String sourceDb) { this.sourceDb = sourceDb; }
+    public String getSourceDatabase() { return sourceDatabase; }
+    public void setSourceDatabase(String sourceDatabase) { this.sourceDatabase = sourceDatabase; }
     public String getSourceSchema() { return sourceSchema; }
     public void setSourceSchema(String sourceSchema) { this.sourceSchema = sourceSchema; }
-    public String getTableName() { return tableName; }
-    public void setTableName(String tableName) { this.tableName = tableName; }
-    public String getTargetSchema() { return targetSchema; }
-    public void setTargetSchema(String targetSchema) { this.targetSchema = targetSchema; }
-    public String getViewName() { return viewName; }
-    public void setViewName(String viewName) { this.viewName = viewName; }
+    public String getSourceTable() { return sourceTable; }
+    public void setSourceTable(String sourceTable) { this.sourceTable = sourceTable; }
+    public String getTargetViewSchema() { return targetViewSchema; }
+    public void setTargetViewSchema(String targetViewSchema) { this.targetViewSchema = targetViewSchema; }
+    public String getTargetView() { return targetView; }
+    public void setTargetView(String targetView) { this.targetView = targetView; }
+    public String getTargetTableSchema() { return targetTableSchema; }
+    public void setTargetTableSchema(String targetTableSchema) { this.targetTableSchema = targetTableSchema; }
+    public String getTargetTable() { return targetTable; }
+    public void setTargetTable(String targetTable) { this.targetTable = targetTable; }
+
+    public String getSourceDb() { return sourceDatabase; }
+    public void setSourceDb(String sourceDb) { this.sourceDatabase = sourceDb; }
+    public String getTableName() { return sourceTable; }
+    public void setTableName(String tableName) { this.sourceTable = tableName; }
+    public String getTargetSchema() { return targetViewSchema; }
+    public void setTargetSchema(String targetSchema) { this.targetViewSchema = targetSchema; }
+    public String getViewName() { return targetView; }
+    public void setViewName(String viewName) { this.targetView = viewName; }
 }

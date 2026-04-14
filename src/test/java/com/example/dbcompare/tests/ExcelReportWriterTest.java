@@ -36,11 +36,11 @@ class ExcelReportWriterTest {
             assertEquals("明细", workbook.getSheetAt(0).getSheetName(), "first sheet should keep the base name");
             assertEquals("明细_2", workbook.getSheetAt(1).getSheetName(), "second sheet should continue with an index suffix");
             assertEquals("明细_3", workbook.getSheetAt(2).getSheetName(), "third sheet should continue with an index suffix");
-            assertEquals("字段名", workbook.getSheetAt(0).getRow(0).getCell(5).getStringCellValue(), "detail workbook headers should be localized");
-            assertEquals("COL_1", workbook.getSheetAt(0).getRow(1).getCell(5).getStringCellValue(), "first sheet should contain the first record");
-            assertEquals("COL_3", workbook.getSheetAt(1).getRow(1).getCell(5).getStringCellValue(), "second sheet should continue with later records");
-            assertEquals("COL_5", workbook.getSheetAt(2).getRow(1).getCell(5).getStringCellValue(), "final sheet should contain the tail record");
-            assertEquals("一致", workbook.getSheetAt(0).getRow(1).getCell(20).getStringCellValue(), "status values should be localized");
+            assertEquals("字段名", workbook.getSheetAt(0).getRow(0).getCell(7).getStringCellValue(), "detail workbook headers should be localized");
+            assertEquals("COL_1", workbook.getSheetAt(0).getRow(1).getCell(7).getStringCellValue(), "first sheet should contain the first record");
+            assertEquals("COL_3", workbook.getSheetAt(1).getRow(1).getCell(7).getStringCellValue(), "second sheet should continue with later records");
+            assertEquals("COL_5", workbook.getSheetAt(2).getRow(1).getCell(7).getStringCellValue(), "final sheet should contain the tail record");
+            assertEquals("一致", workbook.getSheetAt(0).getRow(1).getCell(22).getStringCellValue(), "status values should be localized");
         }
     }
 
@@ -49,8 +49,10 @@ class ExcelReportWriterTest {
         record.setSourceDatabaseName("SRC");
         record.setSourceSchemaName("SRC_SCHEMA");
         record.setSourceTableName("SRC_TABLE");
-        record.setTargetSchemaName("TGT_SCHEMA");
-        record.setTargetTableName("TGT_TABLE");
+        record.setTargetViewSchemaName("TGT_VIEW_SCHEMA");
+        record.setTargetViewName("TGT_VIEW");
+        record.setTargetLineageTableSchemaName("TGT_TABLE_SCHEMA");
+        record.setTargetLineageTableName("TGT_TABLE");
         record.setColumnName(columnName);
         record.setSourceColumnExists(true);
         record.setTargetColumnExists(true);

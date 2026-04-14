@@ -12,6 +12,7 @@ import com.example.dbcompare.domain.model.SchemaMeta;
 import com.example.dbcompare.domain.model.SourceTableLoadResult;
 import com.example.dbcompare.domain.model.TableComparisonResult;
 import com.example.dbcompare.domain.model.TableMeta;
+import com.example.dbcompare.domain.model.TargetViewLineageEntry;
 import com.example.dbcompare.infrastructure.output.CsvReportWriter;
 import com.example.dbcompare.infrastructure.output.ExcelReportWriter;
 import com.example.dbcompare.infrastructure.output.SqlReportWriter;
@@ -26,9 +27,11 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class CompareOrchestrator {
     private static final Logger log = LoggerFactory.getLogger(CompareOrchestrator.class);
@@ -41,6 +44,7 @@ public class CompareOrchestrator {
     private final SqlReportWriter sqlReportWriter;
     private final SummaryReportWriter summaryReportWriter;
     private final SummaryExcelReportWriter summaryExcelReportWriter;
+    private final TargetViewLineageService targetViewLineageService;
     private final ViewParser viewParser;
 
     public CompareOrchestrator(MetadataLoadService metadataLoadService,
@@ -51,7 +55,7 @@ public class CompareOrchestrator {
                                SqlReportWriter sqlReportWriter,
                                SummaryReportWriter summaryReportWriter) {
         this(metadataLoadService, mappingService, tableCompareService, csvReportWriter, excelReportWriter,
-                sqlReportWriter, summaryReportWriter, new SummaryExcelReportWriter(), new ViewParser());
+                sqlReportWriter, summaryReportWriter, new SummaryExcelReportWriter(), new TargetViewLineageService(), new ViewParser());
     }
 
     public CompareOrchestrator(MetadataLoadService metadataLoadService,
@@ -63,7 +67,20 @@ public class CompareOrchestrator {
                                SummaryReportWriter summaryReportWriter,
                                SummaryExcelReportWriter summaryExcelReportWriter) {
         this(metadataLoadService, mappingService, tableCompareService, csvReportWriter, excelReportWriter,
-                sqlReportWriter, summaryReportWriter, summaryExcelReportWriter, new ViewParser());
+                sqlReportWriter, summaryReportWriter, summaryExcelReportWriter, new TargetViewLineageService(), new ViewParser());
+    }
+
+    public CompareOrchestrator(MetadataLoadService metadataLoadService,
+                               MappingService mappingService,
+                               TableCompareService tableCompareService,
+                               CsvReportWriter csvReportWriter,
+                               ExcelReportWriter excelReportWriter,
+                               SqlReportWriter sqlReportWriter,
+                               SummaryReportWriter summaryReportWriter,
+                               SummaryExcelReportWriter summaryExcelReportWriter,
+                               TargetViewLineageService targetViewLineageService) {
+        this(metadataLoadService, mappingService, tableCompareService, csvReportWriter, excelReportWriter,
+                sqlReportWriter, summaryReportWriter, summaryExcelReportWriter, targetViewLineageService, new ViewParser());
     }
 
     CompareOrchestrator(MetadataLoadService metadataLoadService,
@@ -74,6 +91,7 @@ public class CompareOrchestrator {
                         SqlReportWriter sqlReportWriter,
                         SummaryReportWriter summaryReportWriter,
                         SummaryExcelReportWriter summaryExcelReportWriter,
+                        TargetViewLineageService targetViewLineageService,
                         ViewParser viewParser) {
         this.metadataLoadService = metadataLoadService;
         this.mappingService = mappingService;
@@ -83,6 +101,7 @@ public class CompareOrchestrator {
         this.sqlReportWriter = sqlReportWriter;
         this.summaryReportWriter = summaryReportWriter;
         this.summaryExcelReportWriter = summaryExcelReportWriter;
+        this.targetViewLineageService = targetViewLineageService;
         this.viewParser = viewParser;
     }
 
@@ -164,34 +183,39 @@ public class CompareOrchestrator {
 
             for (int index = 0; index < compareTasks.size(); index++) {
                 CompareTask task = compareTasks.get(index);
-                log.info("Target-driven compare [{}/{}]: target {}.{} -> source {}.{}",
+                log.info("Target-driven compare [{}/{}]: target view {}.{} -> source {}.{}",
                         index + 1,
                         compareTasks.size(),
-                        task.getTargetSchema(),
-                        task.getViewName(),
+                        task.getTargetViewSchema(),
+                        task.getTargetView(),
                         task.getSourceSchema() == null ? "<AUTO>" : task.getSourceSchema(),
-                        task.getTableName());
-                DataSourceInfo sourceInfo = sourceIndex.get(NameNormalizer.normalize(task.getSourceDb()));
+                        task.getSourceTable());
+                DataSourceInfo sourceInfo = sourceIndex.get(NameNormalizer.normalize(task.getSourceDatabase()));
                 if (sourceInfo == null) {
                     continue;
                 }
-                String schemaKey = NameNormalizer.normalize(task.getSourceDb()) + "::" + NameNormalizer.normalize(task.getSourceSchema());
+                String schemaKey = NameNormalizer.normalize(task.getSourceDatabase()) + "::" + NameNormalizer.normalize(task.getSourceSchema());
                 if (visitedSourceSchemas.add(schemaKey)) {
                     summary.incrementSourceSchemaCount();
                 }
                 summary.incrementSourceTableCount();
 
-                SourceTableLoadResult sourceTableLoadResult = metadataLoadService.loadSourceTable(sourceInfo, task.getSourceSchema(), task.getTableName());
-                SchemaMeta targetSchema = targetMetadata.getSchemas().get(NameNormalizer.normalize(task.getTargetSchema()));
-                TableMeta targetView = targetSchema == null ? null : targetSchema.getTables().get(NameNormalizer.normalize(task.getViewName()));
+                List<TargetViewLineageEntry> lineageEntries = targetViewLineageService.loadLineage(
+                        compareConfig.getTarget(),
+                        task.getTargetViewSchema(),
+                        task.getTargetView());
+
+                SourceTableLoadResult sourceTableLoadResult = metadataLoadService.loadSourceTable(sourceInfo, task.getSourceSchema(), task.getSourceTable());
+                SchemaMeta targetSchema = targetMetadata.getSchemas().get(NameNormalizer.normalize(task.getTargetViewSchema()));
+                TableMeta targetView = targetSchema == null ? null : targetSchema.getTables().get(NameNormalizer.normalize(task.getTargetView()));
 
                 TableComparisonResult comparisonResult;
                 if (sourceTableLoadResult.isAmbiguous()) {
                     comparisonResult = tableCompareService.buildSourceIssueResult(sourceInfo,
                             sourceTableLoadResult.getSchemaName(),
                             sourceTableLoadResult.getTableName(),
-                            task.getTargetSchema(),
-                            task.getViewName(),
+                            task.getTargetViewSchema(),
+                            task.getTargetView(),
                             DiffType.SOURCE_TABLE_AMBIGUOUS,
                             sourceTableLoadResult.getMessage());
                 } else {
@@ -201,10 +225,11 @@ public class CompareOrchestrator {
                     comparisonResult = tableCompareService.compareDetailed(sourceInfo,
                             sourceSchemaName,
                             sourceTableLoadResult.getTableMeta(),
-                            task.getTargetSchema(),
+                            task.getTargetViewSchema(),
                             targetView,
                             compareConfig.getOptions());
                 }
+                applyTargetViewContext(comparisonResult, task, lineageEntries);
                 appendResult(summary, csvSession, excelSession, sqlSession, summaryExcelSession, comparisonResult);
             }
         } catch (IOException e) {
@@ -252,6 +277,39 @@ public class CompareOrchestrator {
             }
         }
         return tasks;
+    }
+
+    private void applyTargetViewContext(TableComparisonResult comparisonResult,
+                                        CompareTask task,
+                                        List<TargetViewLineageEntry> lineageEntries) {
+        String targetTableSchemas = joinUnique(lineageEntries.stream()
+                .map(TargetViewLineageEntry::getTargetTableSchema)
+                .collect(Collectors.toList()));
+        String targetTables = joinUnique(lineageEntries.stream()
+                .map(TargetViewLineageEntry::getTargetTableName)
+                .collect(Collectors.toList()));
+
+        comparisonResult.getDiffs().forEach(diff -> {
+            diff.setTargetViewSchemaName(task.getTargetViewSchema());
+            diff.setTargetViewName(task.getTargetView());
+            diff.setTargetLineageTableSchemaName(targetTableSchemas);
+            diff.setTargetLineageTableName(targetTables);
+        });
+
+        comparisonResult.getColumnRecords().forEach(record -> {
+            record.setTargetViewSchemaName(task.getTargetViewSchema());
+            record.setTargetViewName(task.getTargetView());
+            record.setTargetLineageTableSchemaName(targetTableSchemas);
+            record.setTargetLineageTableName(targetTables);
+        });
+    }
+
+    private String joinUnique(List<String> values) {
+        return values.stream()
+                .filter(value -> value != null && !value.isBlank())
+                .collect(Collectors.toCollection(LinkedHashSet::new))
+                .stream()
+                .collect(Collectors.joining("|"));
     }
 
     private CompareObjectType resolveTargetObjectType(CompareConfig compareConfig) {

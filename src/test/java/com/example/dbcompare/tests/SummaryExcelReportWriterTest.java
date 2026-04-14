@@ -23,11 +23,11 @@ class SummaryExcelReportWriterTest {
 
         try (SummaryExcelReportWriter.SummaryExcelReportSession session = writer.open(output)) {
             session.append(List.of(
-                    record("SRC_A", "SCH_A", "TABLE_DEFAULT", "TGT_A", "TABLE_DEFAULT", "COL_1", true, true, ComparisonStatus.MISMATCH, "COLUMN_DEFAULT_MISMATCH", "Default mismatch"),
-                    record("SRC_A", "SCH_A", "TABLE_LENGTH", "TGT_A", "TABLE_LENGTH", "COL_1", true, true, ComparisonStatus.MISMATCH, "COLUMN_LENGTH_MISMATCH", "Length mismatch"),
-                    record("SRC_A", "SCH_A", "TABLE_MISSING", "TGT_A", "TABLE_MISSING", "COL_1", true, false, ComparisonStatus.MISMATCH, "COLUMN_MISSING_IN_TARGET", "Column exists only in source"),
-                    record("SRC_A", "SCH_A", "TABLE_OK", "TGT_A", "TABLE_OK", "COL_1", true, true, ComparisonStatus.MATCH, "", "MATCH"),
-                    record("SRC_A", "SCH_A", "TABLE_TYPE", "TGT_A", "TABLE_TYPE", "COL_1", true, true, ComparisonStatus.MISMATCH, "COLUMN_TYPE_MISMATCH", "Type mismatch")
+                    record("SRC_A", "SCH_A", "TABLE_DEFAULT", "VIEW_SCH", "VIEW_DEFAULT", "BASE_SCH", "BASE_DEFAULT", "COL_1", true, true, ComparisonStatus.MISMATCH, "COLUMN_DEFAULT_MISMATCH", "Default mismatch"),
+                    record("SRC_A", "SCH_A", "TABLE_LENGTH", "VIEW_SCH", "VIEW_LENGTH", "BASE_SCH", "BASE_LENGTH", "COL_1", true, true, ComparisonStatus.MISMATCH, "COLUMN_LENGTH_MISMATCH", "Length mismatch"),
+                    record("SRC_A", "SCH_A", "TABLE_MISSING", "VIEW_SCH", "VIEW_MISSING", "BASE_SCH", "BASE_MISSING", "COL_1", true, false, ComparisonStatus.MISMATCH, "COLUMN_MISSING_IN_TARGET", "Column exists only in source"),
+                    record("SRC_A", "SCH_A", "TABLE_OK", "VIEW_SCH", "VIEW_OK", "BASE_SCH", "BASE_OK", "COL_1", true, true, ComparisonStatus.MATCH, "", "MATCH"),
+                    record("SRC_A", "SCH_A", "TABLE_TYPE", "VIEW_SCH", "VIEW_TYPE", "BASE_SCH", "BASE_TYPE", "COL_1", true, true, ComparisonStatus.MISMATCH, "COLUMN_TYPE_MISMATCH", "Type mismatch")
             ));
         }
 
@@ -42,7 +42,7 @@ class SummaryExcelReportWriterTest {
             assertEquals("可空明细", workbook.getSheetAt(6).getSheetName(), "nullable detail sheet should be present");
 
             assertEquals("视图Schema", workbook.getSheet("汇总").getRow(0).getCell(0).getStringCellValue(), "summary should render schema block title");
-            assertEquals("TGT_A", workbook.getSheet("汇总").getRow(2).getCell(0).getStringCellValue(), "summary should aggregate target schema");
+            assertEquals("VIEW_SCH", workbook.getSheet("汇总").getRow(2).getCell(0).getStringCellValue(), "summary should aggregate target view schema");
             assertEquals("5", workbook.getSheet("汇总").getRow(2).getCell(1).getStringCellValue(), "summary should count tables per target schema");
 
             assertEquals("指标概况", workbook.getSheet("汇总").getRow(0).getCell(3).getStringCellValue(), "summary should render overview block title");
@@ -83,17 +83,21 @@ class SummaryExcelReportWriterTest {
 
             short fullExistsColor = workbook.getSheet("汇总").getRow(2).getCell(6).getCellStyle().getFillForegroundColor();
             short riskHighColor = workbook.getSheet("汇总").getRow(4).getCell(10).getCellStyle().getFillForegroundColor();
-            short missingColumnColor = workbook.getSheet("表级状态").getRow(3).getCell(11).getCellStyle().getFillForegroundColor();
+            short missingColumnColor = workbook.getSheet("表级状态").getRow(3).getCell(13).getCellStyle().getFillForegroundColor();
             assertNotEquals(0, fullExistsColor, "summary status cells should have a fill color");
             assertNotEquals(fullExistsColor, riskHighColor, "high risk should use a different highlight than positive status");
             assertEquals(riskHighColor, missingColumnColor, "table status should reuse strong highlight for severe mismatch categories");
 
             assertEquals("TABLE_MISSING", workbook.getSheet("表级状态").getRow(3).getCell(2).getStringCellValue(), "table status sheet should list the missing-field table");
-            assertEquals("不完全存在", workbook.getSheet("表级状态").getRow(3).getCell(5).getStringCellValue(), "table status sheet should classify missing columns as not fully existing");
-            assertEquals("高", workbook.getSheet("表级状态").getRow(3).getCell(10).getStringCellValue(), "table status sheet should classify missing columns as high risk");
+            assertEquals("VIEW_MISSING", workbook.getSheet("表级状态").getRow(3).getCell(4).getStringCellValue(), "table status sheet should expose the target view");
+            assertEquals("BASE_MISSING", workbook.getSheet("表级状态").getRow(3).getCell(6).getStringCellValue(), "table status sheet should expose the lineage target table");
+            assertEquals("不完全存在", workbook.getSheet("表级状态").getRow(3).getCell(7).getStringCellValue(), "table status sheet should classify missing columns as not fully existing");
+            assertEquals("高", workbook.getSheet("表级状态").getRow(3).getCell(12).getStringCellValue(), "table status sheet should classify missing columns as high risk");
 
             assertEquals("TABLE_MISSING", workbook.getSheet("字段存在明细").getRow(1).getCell(2).getStringCellValue(), "field existence detail should keep missing table row");
-            assertEquals("目标端缺字段", workbook.getSheet("字段存在明细").getRow(1).getCell(6).getStringCellValue(), "field existence detail should localize diff type");
+            assertEquals("VIEW_MISSING", workbook.getSheet("字段存在明细").getRow(1).getCell(4).getStringCellValue(), "field existence detail should expose target view columns");
+            assertEquals("BASE_MISSING", workbook.getSheet("字段存在明细").getRow(1).getCell(6).getStringCellValue(), "field existence detail should expose lineage target tables");
+            assertEquals("目标端缺字段", workbook.getSheet("字段存在明细").getRow(1).getCell(8).getStringCellValue(), "field existence detail should localize diff type");
             assertEquals("TABLE_TYPE", workbook.getSheet("类型明细").getRow(1).getCell(2).getStringCellValue(), "type detail should keep type mismatch row");
             assertEquals("TABLE_LENGTH", workbook.getSheet("长度明细").getRow(1).getCell(2).getStringCellValue(), "length detail should keep length mismatch row");
             assertEquals("TABLE_DEFAULT", workbook.getSheet("默认值明细").getRow(1).getCell(2).getStringCellValue(), "default detail should keep default mismatch row");
@@ -104,7 +108,9 @@ class SummaryExcelReportWriterTest {
     private ColumnComparisonRecord record(String sourceDb,
                                           String sourceSchema,
                                           String sourceTable,
-                                          String targetSchema,
+                                          String targetViewSchema,
+                                          String targetView,
+                                          String targetTableSchema,
                                           String targetTable,
                                           String columnName,
                                           boolean sourceExists,
@@ -116,8 +122,10 @@ class SummaryExcelReportWriterTest {
         record.setSourceDatabaseName(sourceDb);
         record.setSourceSchemaName(sourceSchema);
         record.setSourceTableName(sourceTable);
-        record.setTargetSchemaName(targetSchema);
-        record.setTargetTableName(targetTable);
+        record.setTargetViewSchemaName(targetViewSchema);
+        record.setTargetViewName(targetView);
+        record.setTargetLineageTableSchemaName(targetTableSchema);
+        record.setTargetLineageTableName(targetTable);
         record.setColumnName(columnName);
         record.setSourceColumnExists(sourceExists);
         record.setTargetColumnExists(targetExists);

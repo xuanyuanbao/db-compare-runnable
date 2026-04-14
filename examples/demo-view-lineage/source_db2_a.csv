@@ -1,0 +1,4 @@
+databaseName,schemaName,tableName,columnName,dataType,length,nullable,defaultValue,ordinalPosition
+DB2_A,LEGACY_A,CUSTOMER,ID,INTEGER,10,NO,,1
+DB2_A,LEGACY_A,CUSTOMER,NAME,VARCHAR,50,YES,,2
+DB2_A,LEGACY_A,CUSTOMER,STATUS,CHAR,1,YES,A,3

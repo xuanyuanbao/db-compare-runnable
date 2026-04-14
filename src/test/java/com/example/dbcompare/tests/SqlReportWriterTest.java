@@ -27,6 +27,8 @@ class SqlReportWriterTest {
         assertTrue(sql.contains("DROP TABLE IF EXISTS `compare_detail_tmp`;"), "sql output should recreate the target table for MySQL imports");
         assertTrue(sql.contains("CREATE TABLE IF NOT EXISTS `compare_detail_tmp`"), "sql output should include MySQL create table syntax");
         assertTrue(sql.contains("`源数据库` VARCHAR(128)"), "sql output should keep the localized detail columns in the ddl");
+        assertTrue(sql.contains("`目标ViewSchema` VARCHAR(128)"), "sql output should expose target view schema columns");
+        assertTrue(sql.contains("`目标基表` VARCHAR(512)"), "sql output should expose lineage target table columns");
         assertTrue(sql.contains("`源端存在` TINYINT(1)"), "sql output should use MySQL-friendly boolean storage");
         assertTrue(sql.contains("ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;"), "sql output should use a MySQL-friendly table definition");
         assertTrue(sql.contains("INSERT INTO `compare_detail_tmp`"), "sql output should include insert statements");
@@ -42,8 +44,10 @@ class SqlReportWriterTest {
         record.setSourceDatabaseName("SRC_DB");
         record.setSourceSchemaName("SRC_SCHEMA");
         record.setSourceTableName("SRC_TABLE");
-        record.setTargetSchemaName("TGT_SCHEMA");
-        record.setTargetTableName("TGT_TABLE");
+        record.setTargetViewSchemaName("TGT_VIEW_SCHEMA");
+        record.setTargetViewName("TGT_VIEW");
+        record.setTargetLineageTableSchemaName("TGT_TABLE_SCHEMA");
+        record.setTargetLineageTableName("TGT_TABLE");
         record.setColumnName(columnName);
         record.setSourceColumnExists(true);
         record.setTargetColumnExists(false);

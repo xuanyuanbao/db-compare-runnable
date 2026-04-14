@@ -9,6 +9,7 @@ import com.example.dbcompare.service.CompareOrchestrator;
 import com.example.dbcompare.service.MappingService;
 import com.example.dbcompare.service.MetadataLoadService;
 import com.example.dbcompare.service.TableCompareService;
+import com.example.dbcompare.service.TargetViewLineageService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -55,6 +56,11 @@ public class CompareBeansConfig {
     }
 
     @Bean
+    public TargetViewLineageService targetViewLineageService() {
+        return new TargetViewLineageService();
+    }
+
+    @Bean
     public MappingService mappingService(DbCompareProperties properties) {
         return new MappingService(properties.getMappings(), properties.getTableMappings());
     }
@@ -67,7 +73,8 @@ public class CompareBeansConfig {
                                                    ExcelReportWriter excelReportWriter,
                                                    SqlReportWriter sqlReportWriter,
                                                    SummaryReportWriter summaryReportWriter,
-                                                   SummaryExcelReportWriter summaryExcelReportWriter) {
+                                                   SummaryExcelReportWriter summaryExcelReportWriter,
+                                                   TargetViewLineageService targetViewLineageService) {
         return new CompareOrchestrator(
                 metadataLoadService,
                 mappingService,
@@ -76,6 +83,7 @@ public class CompareBeansConfig {
                 excelReportWriter,
                 sqlReportWriter,
                 summaryReportWriter,
-                summaryExcelReportWriter);
+                summaryExcelReportWriter,
+                targetViewLineageService);
     }
 }

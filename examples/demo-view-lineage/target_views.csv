@@ -1,0 +1,4 @@
+databaseName,schemaName,tableName,columnName,dataType,length,nullable,defaultValue,ordinalPosition
+GAUSS,VIEW_APP,CUSTOMER_VIEW,ID,INTEGER,10,NO,,1
+GAUSS,VIEW_APP,CUSTOMER_VIEW,NAME,VARCHAR,60,YES,,2
+GAUSS,VIEW_APP,CUSTOMER_VIEW,STATUS,CHAR,1,YES,B,3

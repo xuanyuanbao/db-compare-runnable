@@ -13,6 +13,7 @@ import com.example.dbcompare.domain.model.SchemaMeta;
 import com.example.dbcompare.domain.model.SourceTableLoadResult;
 import com.example.dbcompare.domain.model.TableMapping;
 import com.example.dbcompare.domain.model.TableMeta;
+import com.example.dbcompare.domain.model.TargetViewLineageEntry;
 import com.example.dbcompare.infrastructure.output.CsvReportWriter;
 import com.example.dbcompare.infrastructure.output.ExcelReportWriter;
 import com.example.dbcompare.infrastructure.output.SqlReportWriter;
@@ -22,11 +23,13 @@ import com.example.dbcompare.service.CompareOrchestrator;
 import com.example.dbcompare.service.MappingService;
 import com.example.dbcompare.service.MetadataLoadService;
 import com.example.dbcompare.service.TableCompareService;
+import com.example.dbcompare.service.TargetViewLineageService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -77,7 +80,8 @@ class TargetDrivenCompareOrchestratorTest {
                 new ExcelReportWriter(),
                 new SqlReportWriter(),
                 new SummaryReportWriter(),
-                new SummaryExcelReportWriter());
+                new SummaryExcelReportWriter(),
+                new StubTargetViewLineageService());
 
         CompareSummary summary = orchestrator.execute(config);
 
@@ -89,6 +93,12 @@ class TargetDrivenCompareOrchestratorTest {
         assertTrue(Files.exists(Path.of(config.getOutput().getExcelPath())), "excel report should be created");
         assertTrue(Files.exists(Path.of(config.getOutput().getSummaryExcelPath())), "summary excel report should be created");
         assertTrue(Files.exists(Path.of(config.getOutput().getSqlPath())), "sql report should be created");
+        String csv = Files.readString(Path.of(config.getOutput().getCsvPath()));
+        assertTrue(csv.contains("目标ViewSchema"), "csv report should expose target view columns");
+        assertTrue(csv.contains("OG_DB2_1"), "csv report should contain target view schema values");
+        assertTrue(csv.contains("CUSTOMER_VIEW"), "csv report should contain target view values");
+        assertTrue(csv.contains("ODS"), "csv report should contain target lineage table schema values");
+        assertTrue(csv.contains("CUSTOMER_BASE"), "csv report should contain target lineage table values");
     }
 
     private static final class RecordingMetadataLoadService extends MetadataLoadService {
@@ -132,6 +142,16 @@ class TargetDrivenCompareOrchestratorTest {
             columnMeta.setDefaultValue(defaultValue);
             columnMeta.setOrdinalPosition(ordinal);
             return columnMeta;
+        }
+    }
+
+    private static final class StubTargetViewLineageService extends TargetViewLineageService {
+        @Override
+        public List<TargetViewLineageEntry> loadLineage(DataSourceInfo target, String targetViewSchema, String targetView) {
+            return List.of(
+                    new TargetViewLineageEntry(targetViewSchema, targetView, "ODS", "CUSTOMER_BASE"),
+                    new TargetViewLineageEntry(targetViewSchema, targetView, "DWD", "CUSTOMER_PROFILE")
+            );
         }
     }
 }

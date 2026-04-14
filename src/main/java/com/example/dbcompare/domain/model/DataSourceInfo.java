@@ -17,6 +17,7 @@ public class DataSourceInfo {
     private String schema;
     private boolean viewOnly;
     private String snapshotFile;
+    private String viewLineageFile;
     private final List<String> includeSchemas = new ArrayList<>();
     private final List<String> excludeSchemas = new ArrayList<>();
     private final List<String> includeTables = new ArrayList<>();
@@ -46,6 +47,8 @@ public class DataSourceInfo {
     public void setViewOnly(boolean viewOnly) { this.viewOnly = viewOnly; }
     public String getSnapshotFile() { return snapshotFile; }
     public void setSnapshotFile(String snapshotFile) { this.snapshotFile = snapshotFile; }
+    public String getViewLineageFile() { return viewLineageFile; }
+    public void setViewLineageFile(String viewLineageFile) { this.viewLineageFile = viewLineageFile; }
     public List<String> getIncludeSchemas() { return includeSchemas; }
     public List<String> getExcludeSchemas() { return excludeSchemas; }
     public List<String> getIncludeTables() { return includeTables; }
