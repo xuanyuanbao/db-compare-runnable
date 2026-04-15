@@ -16,6 +16,7 @@ public class CompareConfig {
     private final List<String> includeTables = new ArrayList<>();
     private final List<String> excludeTables = new ArrayList<>();
     private final CompareOptions options = new CompareOptions();
+    private final ReportConfig report = new ReportConfig();
     private final OutputConfig output = new OutputConfig();
 
     public CompareMode getMode() { return mode; }
@@ -30,5 +31,6 @@ public class CompareConfig {
     public List<String> getIncludeTables() { return includeTables; }
     public List<String> getExcludeTables() { return excludeTables; }
     public CompareOptions getOptions() { return options; }
+    public ReportConfig getReport() { return report; }
     public OutputConfig getOutput() { return output; }
 }

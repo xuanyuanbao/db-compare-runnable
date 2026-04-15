@@ -3,8 +3,11 @@ package com.example.dbcompare.config;
 import com.example.dbcompare.domain.enums.DatabaseType;
 import com.example.dbcompare.domain.model.CompareConfig;
 import com.example.dbcompare.domain.model.DataSourceInfo;
+import com.example.dbcompare.domain.model.ManualConfirmationConfig;
 import com.example.dbcompare.domain.model.SchemaMapping;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -32,6 +35,8 @@ public class ConfigValidator {
                 throw new IllegalArgumentException("targetSchemaName must not be blank for source=" + mapping.getSourceDatabaseName());
             }
         }
+
+        validateManualConfirmation(config.getReport().getManualConfirmation());
     }
 
     private void validateDataSource(DataSourceInfo dataSourceInfo, boolean isSource) {
@@ -58,5 +63,30 @@ public class ConfigValidator {
 
     private String normalize(String value) {
         return value == null ? null : value.trim().toUpperCase();
+    }
+
+    private void validateManualConfirmation(ManualConfirmationConfig manualConfirmation) {
+        if (manualConfirmation == null || !manualConfirmation.isEnabled()) {
+            return;
+        }
+        String resolvedExcelPath = manualConfirmation.resolveExcelPath();
+        if (isBlank(resolvedExcelPath)) {
+            throw new IllegalArgumentException(
+                    "人工确认融合功能已开启，但未配置 report.manualConfirmation.excelDir + report.manualConfirmation.excelName 或 report.manualConfirmation.excelPath");
+        }
+        Path path = Path.of(resolvedExcelPath);
+        if (!Files.exists(path)) {
+            throw new IllegalArgumentException("人工确认融合功能已开启，但测试组Excel文件不存在: " + path.toAbsolutePath());
+        }
+        if (!Files.isRegularFile(path)) {
+            throw new IllegalArgumentException("人工确认融合功能已开启，但测试组Excel路径不是文件: " + path.toAbsolutePath());
+        }
+        if (!Files.isReadable(path)) {
+            throw new IllegalArgumentException("人工确认融合功能已开启，但测试组Excel文件不可读: " + path.toAbsolutePath());
+        }
+        String fileName = path.getFileName() == null ? "" : path.getFileName().toString().toLowerCase();
+        if (!(fileName.endsWith(".xlsx") || fileName.endsWith(".xls"))) {
+            throw new IllegalArgumentException("人工确认融合功能已开启，但指定文件不是合法Excel文件: " + path.toAbsolutePath());
+        }
     }
 }

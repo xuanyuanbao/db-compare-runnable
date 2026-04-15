@@ -67,6 +67,16 @@ public class ConfigLoader {
         config.getOptions().setSourceLoadThreads(intValue(properties, "compare.options.sourceLoadThreads", 4));
         config.getOptions().setObjectType(enumValue(properties, CompareObjectType.class, CompareObjectType.TABLE,
                 "compare.options.objectType", "compare.options.object-type"));
+        config.getReport().getManualConfirmation().setEnabled(boolValue(properties, "report.manualConfirmation.enabled", false));
+        config.getReport().getManualConfirmation().setExcelDir(firstNonBlank(
+                properties.getProperty("report.manualConfirmation.excelDir"),
+                properties.getProperty("report.manual-confirmation.excel-dir")));
+        config.getReport().getManualConfirmation().setExcelName(firstNonBlank(
+                properties.getProperty("report.manualConfirmation.excelName"),
+                properties.getProperty("report.manual-confirmation.excel-name")));
+        config.getReport().getManualConfirmation().setExcelPath(firstNonBlank(
+                properties.getProperty("report.manualConfirmation.excelPath"),
+                properties.getProperty("report.manual-confirmation.excel-path")));
 
         String csvPath = properties.getProperty("output.csvPath");
         if (csvPath != null && !csvPath.isBlank()) config.getOutput().setCsvPath(csvPath.trim());
@@ -78,6 +88,10 @@ public class ConfigLoader {
                 properties.getProperty("output.targetViewLineageExcelPath"),
                 properties.getProperty("output.target-view-lineage-excel-path"));
         if (targetViewLineageExcelPath != null) config.getOutput().setTargetViewLineageExcelPath(targetViewLineageExcelPath);
+        String manualConfirmationExcelPath = firstNonBlank(
+                properties.getProperty("output.manualConfirmationExcelPath"),
+                properties.getProperty("output.manual-confirmation-excel-path"));
+        if (manualConfirmationExcelPath != null) config.getOutput().setManualConfirmationExcelPath(manualConfirmationExcelPath);
         String sqlPath = properties.getProperty("output.sqlPath");
         if (sqlPath != null && !sqlPath.isBlank()) config.getOutput().setSqlPath(sqlPath.trim());
         String sqlTableName = properties.getProperty("output.sqlTableName");

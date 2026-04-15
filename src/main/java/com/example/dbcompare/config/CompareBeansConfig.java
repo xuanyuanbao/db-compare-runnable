@@ -2,11 +2,14 @@ package com.example.dbcompare.config;
 
 import com.example.dbcompare.infrastructure.output.CsvReportWriter;
 import com.example.dbcompare.infrastructure.output.ExcelReportWriter;
+import com.example.dbcompare.infrastructure.output.ManualConfirmationMergedExcelWriter;
 import com.example.dbcompare.infrastructure.output.SqlReportWriter;
 import com.example.dbcompare.infrastructure.output.SummaryExcelReportWriter;
 import com.example.dbcompare.infrastructure.output.SummaryReportWriter;
 import com.example.dbcompare.infrastructure.output.TargetViewLineageExcelWriter;
 import com.example.dbcompare.service.CompareOrchestrator;
+import com.example.dbcompare.service.ManualConfirmationExcelParser;
+import com.example.dbcompare.service.ManualConfirmationMergeService;
 import com.example.dbcompare.service.MappingService;
 import com.example.dbcompare.service.MetadataLoadService;
 import com.example.dbcompare.service.TableCompareService;
@@ -57,8 +60,23 @@ public class CompareBeansConfig {
     }
 
     @Bean
+    public ManualConfirmationMergedExcelWriter manualConfirmationMergedExcelWriter() {
+        return new ManualConfirmationMergedExcelWriter();
+    }
+
+    @Bean
     public TargetViewLineageExcelWriter targetViewLineageExcelWriter() {
         return new TargetViewLineageExcelWriter();
+    }
+
+    @Bean
+    public ManualConfirmationExcelParser manualConfirmationExcelParser() {
+        return new ManualConfirmationExcelParser();
+    }
+
+    @Bean
+    public ManualConfirmationMergeService manualConfirmationMergeService(ManualConfirmationExcelParser parser) {
+        return new ManualConfirmationMergeService(parser);
     }
 
     @Bean
@@ -77,10 +95,12 @@ public class CompareBeansConfig {
                                                    TableCompareService tableCompareService,
                                                    CsvReportWriter csvReportWriter,
                                                    ExcelReportWriter excelReportWriter,
+                                                   ManualConfirmationMergedExcelWriter manualConfirmationMergedExcelWriter,
                                                    SqlReportWriter sqlReportWriter,
                                                    TargetViewLineageExcelWriter targetViewLineageExcelWriter,
                                                    SummaryReportWriter summaryReportWriter,
                                                    SummaryExcelReportWriter summaryExcelReportWriter,
+                                                   ManualConfirmationMergeService manualConfirmationMergeService,
                                                    TargetViewLineageService targetViewLineageService) {
         return new CompareOrchestrator(
                 metadataLoadService,
@@ -88,10 +108,12 @@ public class CompareBeansConfig {
                 tableCompareService,
                 csvReportWriter,
                 excelReportWriter,
+                manualConfirmationMergedExcelWriter,
                 sqlReportWriter,
                 targetViewLineageExcelWriter,
                 summaryReportWriter,
                 summaryExcelReportWriter,
+                manualConfirmationMergeService,
                 targetViewLineageService);
     }
 }

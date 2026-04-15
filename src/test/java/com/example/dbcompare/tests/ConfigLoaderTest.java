@@ -48,9 +48,13 @@ public final class ConfigLoaderTest {
         properties.setProperty("compare.options.compareLength", "true");
         properties.setProperty("compare.options.objectType", "view");
         properties.setProperty("compare.options.sourceLoadThreads", "2");
+        properties.setProperty("report.manualConfirmation.enabled", "true");
+        properties.setProperty("report.manualConfirmation.excelDir", "build/reports");
+        properties.setProperty("report.manualConfirmation.excelName", "manual-confirmation.xlsx");
         properties.setProperty("output.csvPath", "build/reports/result.csv");
         properties.setProperty("output.excelPath", "build/reports/result.xlsx");
         properties.setProperty("output.target-view-lineage-excel-path", "build/reports/result-view-lineage.xlsx");
+        properties.setProperty("output.manual-confirmation-excel-path", "build/reports/result-manual.xlsx");
         properties.setProperty("output.sqlPath", "build/reports/result.sql");
         properties.setProperty("output.sqlTableName", "compare_detail_tmp");
         properties.setProperty("output.summaryPath", "build/reports/summary.txt");
@@ -87,12 +91,20 @@ public final class ConfigLoaderTest {
                 "object type should be loaded from config");
         TestSupport.assertEquals(2, config.getOptions().getSourceLoadThreads(),
                 "source load thread count should be loaded");
+        TestSupport.assertTrue(config.getReport().getManualConfirmation().isEnabled(),
+                "manual confirmation switch should be loaded");
+        TestSupport.assertEquals("build/reports", config.getReport().getManualConfirmation().getExcelDir(),
+                "manual confirmation excel dir should be loaded");
+        TestSupport.assertEquals("manual-confirmation.xlsx", config.getReport().getManualConfirmation().getExcelName(),
+                "manual confirmation excel name should be loaded");
         TestSupport.assertEquals("build/reports/result.csv", config.getOutput().getCsvPath(),
                 "csv output path should be loaded");
         TestSupport.assertEquals("build/reports/result.xlsx", config.getOutput().getExcelPath(),
                 "excel output path should be loaded");
         TestSupport.assertEquals("build/reports/result-view-lineage.xlsx", config.getOutput().getTargetViewLineageExcelPath(),
                 "target view lineage excel path should be loaded");
+        TestSupport.assertEquals("build/reports/result-manual.xlsx", config.getOutput().getManualConfirmationExcelPath(),
+                "manual confirmation excel output path should be loaded");
         TestSupport.assertEquals("build/reports/result.sql", config.getOutput().getSqlPath(),
                 "sql output path should be loaded");
         TestSupport.assertEquals("compare_detail_tmp", config.getOutput().getSqlTableName(),

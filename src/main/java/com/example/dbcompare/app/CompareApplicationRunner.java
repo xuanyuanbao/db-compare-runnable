@@ -34,6 +34,9 @@ public class CompareApplicationRunner implements ApplicationRunner {
         log.info("CSV report: {}", properties.getOutput().getCsvPath());
         log.info("Excel report: {}", properties.getOutput().getExcelPath());
         log.info("Target view lineage Excel report: {}", properties.getOutput().getTargetViewLineageExcelPath());
+        if (properties.getReport().getManualConfirmation().isEnabled()) {
+            log.info("Manual confirmation merged Excel report: {}", properties.getOutput().getManualConfirmationExcelPath());
+        }
         log.info("SQL report: {} (table={})", properties.getOutput().getSqlPath(), properties.getOutput().getSqlTableName());
         log.info("Summary report: {}", properties.getOutput().getSummaryPath());
     }

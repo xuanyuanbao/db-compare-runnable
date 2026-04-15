@@ -2,12 +2,15 @@ package com.example.dbcompare.service;
 
 import com.example.dbcompare.domain.enums.CompareMode;
 import com.example.dbcompare.domain.enums.CompareObjectType;
+import com.example.dbcompare.domain.enums.ComparisonStatus;
 import com.example.dbcompare.domain.enums.DiffType;
+import com.example.dbcompare.domain.model.ColumnComparisonRecord;
 import com.example.dbcompare.domain.model.CompareConfig;
 import com.example.dbcompare.domain.model.CompareSummary;
 import com.example.dbcompare.domain.model.CompareTask;
 import com.example.dbcompare.domain.model.DataSourceInfo;
 import com.example.dbcompare.domain.model.DatabaseMeta;
+import com.example.dbcompare.domain.model.ManualConfirmationMergeResult;
 import com.example.dbcompare.domain.model.SchemaMeta;
 import com.example.dbcompare.domain.model.SourceTableLoadResult;
 import com.example.dbcompare.domain.model.TableComparisonResult;
@@ -16,6 +19,7 @@ import com.example.dbcompare.domain.model.TargetViewLineageEntry;
 import com.example.dbcompare.domain.model.TargetViewLineageReportRow;
 import com.example.dbcompare.infrastructure.output.CsvReportWriter;
 import com.example.dbcompare.infrastructure.output.ExcelReportWriter;
+import com.example.dbcompare.infrastructure.output.ManualConfirmationMergedExcelWriter;
 import com.example.dbcompare.infrastructure.output.SqlReportWriter;
 import com.example.dbcompare.infrastructure.output.SummaryExcelReportWriter;
 import com.example.dbcompare.infrastructure.output.SummaryReportWriter;
@@ -43,10 +47,12 @@ public class CompareOrchestrator {
     private final TableCompareService tableCompareService;
     private final CsvReportWriter csvReportWriter;
     private final ExcelReportWriter excelReportWriter;
+    private final ManualConfirmationMergedExcelWriter manualConfirmationMergedExcelWriter;
     private final SqlReportWriter sqlReportWriter;
     private final TargetViewLineageExcelWriter targetViewLineageExcelWriter;
     private final SummaryReportWriter summaryReportWriter;
     private final SummaryExcelReportWriter summaryExcelReportWriter;
+    private final ManualConfirmationMergeService manualConfirmationMergeService;
     private final TargetViewLineageService targetViewLineageService;
     private final ViewParser viewParser;
 
@@ -58,8 +64,23 @@ public class CompareOrchestrator {
                                SqlReportWriter sqlReportWriter,
                                SummaryReportWriter summaryReportWriter) {
         this(metadataLoadService, mappingService, tableCompareService, csvReportWriter, excelReportWriter,
-                sqlReportWriter, new TargetViewLineageExcelWriter(), summaryReportWriter,
-                new SummaryExcelReportWriter(), new TargetViewLineageService(), new ViewParser());
+                new ManualConfirmationMergedExcelWriter(), sqlReportWriter, new TargetViewLineageExcelWriter(),
+                summaryReportWriter, new SummaryExcelReportWriter(), new ManualConfirmationMergeService(),
+                new TargetViewLineageService(), new ViewParser());
+    }
+
+    public CompareOrchestrator(MetadataLoadService metadataLoadService,
+                               MappingService mappingService,
+                               TableCompareService tableCompareService,
+                               CsvReportWriter csvReportWriter,
+                               ExcelReportWriter excelReportWriter,
+                               ManualConfirmationMergedExcelWriter manualConfirmationMergedExcelWriter,
+                               SqlReportWriter sqlReportWriter,
+                               SummaryReportWriter summaryReportWriter) {
+        this(metadataLoadService, mappingService, tableCompareService, csvReportWriter, excelReportWriter,
+                manualConfirmationMergedExcelWriter, sqlReportWriter, new TargetViewLineageExcelWriter(),
+                summaryReportWriter, new SummaryExcelReportWriter(), new ManualConfirmationMergeService(),
+                new TargetViewLineageService(), new ViewParser());
     }
 
     public CompareOrchestrator(MetadataLoadService metadataLoadService,
@@ -71,8 +92,24 @@ public class CompareOrchestrator {
                                SummaryReportWriter summaryReportWriter,
                                SummaryExcelReportWriter summaryExcelReportWriter) {
         this(metadataLoadService, mappingService, tableCompareService, csvReportWriter, excelReportWriter,
-                sqlReportWriter, new TargetViewLineageExcelWriter(), summaryReportWriter,
-                summaryExcelReportWriter, new TargetViewLineageService(), new ViewParser());
+                new ManualConfirmationMergedExcelWriter(), sqlReportWriter, new TargetViewLineageExcelWriter(),
+                summaryReportWriter, summaryExcelReportWriter, new ManualConfirmationMergeService(),
+                new TargetViewLineageService(), new ViewParser());
+    }
+
+    public CompareOrchestrator(MetadataLoadService metadataLoadService,
+                               MappingService mappingService,
+                               TableCompareService tableCompareService,
+                               CsvReportWriter csvReportWriter,
+                               ExcelReportWriter excelReportWriter,
+                               ManualConfirmationMergedExcelWriter manualConfirmationMergedExcelWriter,
+                               SqlReportWriter sqlReportWriter,
+                               SummaryReportWriter summaryReportWriter,
+                               SummaryExcelReportWriter summaryExcelReportWriter) {
+        this(metadataLoadService, mappingService, tableCompareService, csvReportWriter, excelReportWriter,
+                manualConfirmationMergedExcelWriter, sqlReportWriter, new TargetViewLineageExcelWriter(),
+                summaryReportWriter, summaryExcelReportWriter, new ManualConfirmationMergeService(),
+                new TargetViewLineageService(), new ViewParser());
     }
 
     public CompareOrchestrator(MetadataLoadService metadataLoadService,
@@ -86,8 +123,26 @@ public class CompareOrchestrator {
                                SummaryExcelReportWriter summaryExcelReportWriter,
                                TargetViewLineageService targetViewLineageService) {
         this(metadataLoadService, mappingService, tableCompareService, csvReportWriter, excelReportWriter,
-                sqlReportWriter, targetViewLineageExcelWriter, summaryReportWriter,
-                summaryExcelReportWriter, targetViewLineageService, new ViewParser());
+                new ManualConfirmationMergedExcelWriter(), sqlReportWriter, targetViewLineageExcelWriter,
+                summaryReportWriter, summaryExcelReportWriter, new ManualConfirmationMergeService(),
+                targetViewLineageService, new ViewParser());
+    }
+
+    public CompareOrchestrator(MetadataLoadService metadataLoadService,
+                               MappingService mappingService,
+                               TableCompareService tableCompareService,
+                               CsvReportWriter csvReportWriter,
+                               ExcelReportWriter excelReportWriter,
+                               ManualConfirmationMergedExcelWriter manualConfirmationMergedExcelWriter,
+                               SqlReportWriter sqlReportWriter,
+                               TargetViewLineageExcelWriter targetViewLineageExcelWriter,
+                               SummaryReportWriter summaryReportWriter,
+                               SummaryExcelReportWriter summaryExcelReportWriter,
+                               ManualConfirmationMergeService manualConfirmationMergeService,
+                               TargetViewLineageService targetViewLineageService) {
+        this(metadataLoadService, mappingService, tableCompareService, csvReportWriter, excelReportWriter,
+                manualConfirmationMergedExcelWriter, sqlReportWriter, targetViewLineageExcelWriter, summaryReportWriter,
+                summaryExcelReportWriter, manualConfirmationMergeService, targetViewLineageService, new ViewParser());
     }
 
     CompareOrchestrator(MetadataLoadService metadataLoadService,
@@ -95,10 +150,12 @@ public class CompareOrchestrator {
                         TableCompareService tableCompareService,
                         CsvReportWriter csvReportWriter,
                         ExcelReportWriter excelReportWriter,
+                        ManualConfirmationMergedExcelWriter manualConfirmationMergedExcelWriter,
                         SqlReportWriter sqlReportWriter,
                         TargetViewLineageExcelWriter targetViewLineageExcelWriter,
                         SummaryReportWriter summaryReportWriter,
                         SummaryExcelReportWriter summaryExcelReportWriter,
+                        ManualConfirmationMergeService manualConfirmationMergeService,
                         TargetViewLineageService targetViewLineageService,
                         ViewParser viewParser) {
         this.metadataLoadService = metadataLoadService;
@@ -106,10 +163,12 @@ public class CompareOrchestrator {
         this.tableCompareService = tableCompareService;
         this.csvReportWriter = csvReportWriter;
         this.excelReportWriter = excelReportWriter;
+        this.manualConfirmationMergedExcelWriter = manualConfirmationMergedExcelWriter;
         this.sqlReportWriter = sqlReportWriter;
         this.targetViewLineageExcelWriter = targetViewLineageExcelWriter;
         this.summaryReportWriter = summaryReportWriter;
         this.summaryExcelReportWriter = summaryExcelReportWriter;
+        this.manualConfirmationMergeService = manualConfirmationMergeService;
         this.targetViewLineageService = targetViewLineageService;
         this.viewParser = viewParser;
     }
@@ -126,6 +185,9 @@ public class CompareOrchestrator {
                 compareConfig.getOptions().getObjectType());
 
         CompareSummary summary = CompareSummary.start(compareConfig.getSources().size());
+        List<ColumnComparisonRecord> manualConfirmationRows = shouldWriteManualConfirmation(compareConfig)
+                ? new ArrayList<>()
+                : null;
         try (CsvReportWriter.CsvReportSession csvSession = csvReportWriter.open(Path.of(compareConfig.getOutput().getCsvPath()));
              ExcelReportWriter.ExcelReportSession excelSession = excelReportWriter.open(Path.of(compareConfig.getOutput().getExcelPath()));
              SqlReportWriter.SqlReportSession sqlSession = sqlReportWriter.open(
@@ -161,6 +223,7 @@ public class CompareOrchestrator {
                                 tableTarget.getSchemaName(), targetTable, compareConfig.getOptions());
 
                         appendResult(summary, csvSession, excelSession, sqlSession, summaryExcelSession, comparisonResult);
+                        collectManualConfirmationRows(manualConfirmationRows, comparisonResult);
                     }
                 }
             }
@@ -168,6 +231,7 @@ public class CompareOrchestrator {
             throw new IllegalStateException("Failed to close report writers", e);
         }
 
+        writeManualConfirmationReport(compareConfig, manualConfirmationRows);
         summaryReportWriter.write(Path.of(compareConfig.getOutput().getSummaryPath()), summary);
         return summary;
     }
@@ -181,6 +245,9 @@ public class CompareOrchestrator {
         CompareSummary summary = CompareSummary.start(compareConfig.getSources().size());
         Map<String, DataSourceInfo> sourceIndex = indexSources(compareConfig.getSources());
         Set<String> visitedSourceSchemas = new HashSet<>();
+        List<ColumnComparisonRecord> manualConfirmationRows = shouldWriteManualConfirmation(compareConfig)
+                ? new ArrayList<>()
+                : null;
 
         TargetViewLineageExcelWriter.TargetViewLineageExcelSession lineageExcelSession = shouldWriteTargetViewLineage(compareConfig)
                 ? targetViewLineageExcelWriter.open(Path.of(compareConfig.getOutput().getTargetViewLineageExcelPath()))
@@ -245,6 +312,7 @@ public class CompareOrchestrator {
                 }
                 applyTargetViewContext(comparisonResult, task, lineageEntries);
                 appendResult(summary, csvSession, excelSession, sqlSession, summaryExcelSession, comparisonResult);
+                collectManualConfirmationRows(manualConfirmationRows, comparisonResult);
             }
         } catch (IOException e) {
             throw new IllegalStateException("Failed to close report writers", e);
@@ -258,8 +326,39 @@ public class CompareOrchestrator {
             }
         }
 
+        writeManualConfirmationReport(compareConfig, manualConfirmationRows);
         summaryReportWriter.write(Path.of(compareConfig.getOutput().getSummaryPath()), summary);
         return summary;
+    }
+
+    private boolean shouldWriteManualConfirmation(CompareConfig compareConfig) {
+        return compareConfig.getReport() != null
+                && compareConfig.getReport().getManualConfirmation() != null
+                && compareConfig.getReport().getManualConfirmation().isEnabled()
+                && compareConfig.getOutput().getManualConfirmationExcelPath() != null
+                && !compareConfig.getOutput().getManualConfirmationExcelPath().isBlank();
+    }
+
+    private void collectManualConfirmationRows(List<ColumnComparisonRecord> rows, TableComparisonResult comparisonResult) {
+        if (rows == null) {
+            return;
+        }
+        for (ColumnComparisonRecord record : comparisonResult.getColumnRecords()) {
+            if (record.getOverallStatus() == ComparisonStatus.MISMATCH) {
+                rows.add(record);
+            }
+        }
+    }
+
+    private void writeManualConfirmationReport(CompareConfig compareConfig, List<ColumnComparisonRecord> manualConfirmationRows) {
+        if (!shouldWriteManualConfirmation(compareConfig)) {
+            return;
+        }
+        ManualConfirmationMergeResult mergeResult = manualConfirmationMergeService.merge(compareConfig, manualConfirmationRows);
+        manualConfirmationMergedExcelWriter.write(
+                Path.of(compareConfig.getOutput().getManualConfirmationExcelPath()),
+                compareConfig,
+                mergeResult);
     }
 
     private boolean shouldWriteTargetViewLineage(CompareConfig compareConfig) {
