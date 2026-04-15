@@ -30,7 +30,7 @@ class ManualConfirmationMergedExcelWriterTest {
         ManualConfirmationMergeResult result = new ManualConfirmationMergeResult();
         result.getMergedRows().add(matchedRow());
         result.getUnmatchedTestRecords().add(unmatchedTestRecord());
-        result.getAmbiguousTestRecords().add(unmatchedTestRecord());
+        result.getAmbiguousTestRecords().add(ambiguousTestRecord());
 
         new ManualConfirmationMergedExcelWriter().write(output, config, result);
 
@@ -41,9 +41,11 @@ class ManualConfirmationMergedExcelWriterTest {
             assertEquals("表级融合状态", workbook.getSheetAt(2).getSheetName(), "table summary sheet should be present");
             assertEquals("未匹配测试组记录", workbook.getSheetAt(6).getSheetName(), "unmatched test sheet should be present");
             assertEquals("歧义匹配记录", workbook.getSheetAt(7).getSheetName(), "ambiguous sheet should be present");
-            assertEquals("责任人", workbook.getSheet("人工确认融合明细").getRow(0).getCell(11).getStringCellValue(), "merged sheet should include manual owner columns");
+            assertEquals("责任人", workbook.getSheet("人工确认融合明细").getRow(0).getCell(11).getStringCellValue(), "merged sheet should include owner column");
             assertEquals("张三", workbook.getSheet("人工确认融合明细").getRow(1).getCell(11).getStringCellValue(), "merged sheet should carry matched owner");
             assertEquals("已匹配", workbook.getSheet("人工确认融合明细").getRow(1).getCell(15).getStringCellValue(), "merged sheet should localize match status");
+            assertEquals("分析原因", workbook.getSheet("未匹配测试组记录").getRow(0).getCell(8).getStringCellValue(), "unmatched test sheet should include analysis column");
+            assertEquals("未找到同表对象", workbook.getSheet("未匹配测试组记录").getRow(1).getCell(8).getStringCellValue(), "unmatched test sheet should keep analysis reason");
         }
     }
 
@@ -75,7 +77,8 @@ class ManualConfirmationMergedExcelWriterTest {
         row.setConfirmResultNormalized("无影响");
         row.setComment("人工确认");
         row.setMatchStatus(ManualConfirmationMatchStatus.MATCHED);
-        row.setMatchBasis("表名+差异类型唯一匹配");
+        row.setMatchBasis("表名 + 差异类型唯一匹配");
+        row.setCandidateCount(1);
         row.setMatchedSheetName("as400");
         row.setMatchedTableName("CUSTOMER");
         row.setMatchedDiffType("列长度不一致");
@@ -91,6 +94,18 @@ class ManualConfirmationMergedExcelWriterTest {
         record.setDiffTypeRaw("列数量不一致");
         record.setDiffDetailRaw("[COL_A]");
         record.setConfirmResultRaw("无影响");
+        record.setAnalysisReason("未找到同表对象");
+        return record;
+    }
+
+    private ManualConfirmationRecord ambiguousTestRecord() {
+        ManualConfirmationRecord record = new ManualConfirmationRecord();
+        record.setSheetName("opsp400");
+        record.setRowNumber(6);
+        record.setTableName("ORDER_VIEW");
+        record.setDiffTypeRaw("列类型不一致");
+        record.setDiffDetailRaw("[STATUS](CHAR,VARCHAR)");
+        record.setAnalysisReason("同表同类型候选过多");
         return record;
     }
 }

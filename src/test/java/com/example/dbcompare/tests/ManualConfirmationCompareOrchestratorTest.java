@@ -130,6 +130,7 @@ class ManualConfirmationCompareOrchestratorTest {
             assertEquals("人工确认融合明细", workbook.getSheetAt(1).getSheetName(), "merged workbook should include merged detail sheet");
             assertEquals("张三", workbook.getSheet("人工确认融合明细").getRow(1).getCell(11).getStringCellValue(), "merged workbook should inherit owner");
             assertEquals("无影响", workbook.getSheet("人工确认融合明细").getRow(1).getCell(13).getStringCellValue(), "merged workbook should include normalized confirmation result");
+            assertEquals("候选数", workbook.getSheet("人工确认融合明细").getRow(0).getCell(17).getStringCellValue(), "merged workbook should include candidate count");
         }
     }
 }

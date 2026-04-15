@@ -13,6 +13,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ManualConfirmationMergeServiceTest {
     @Test
@@ -38,7 +39,10 @@ class ManualConfirmationMergeServiceTest {
         assertRow(result, "ORDER", ManualConfirmationMatchStatus.AMBIGUOUS_AI, null);
         assertEquals(1, result.getUnmatchedTestRecords().size(), "unmatched test rows should be exposed");
         assertEquals("LEGACY_ONLY", result.getUnmatchedTestRecords().get(0).getTableName(), "unmatched test row should be preserved");
+        assertTrue(result.getUnmatchedTestRecords().get(0).getAnalysisReason().contains("未找到同表对象"), "unmatched test row should carry analysis reason");
         assertEquals(2, result.getAmbiguousTestRecords().size(), "ambiguous test rows should be exposed");
+        assertTrue(result.getAmbiguousTestRecords().stream().allMatch(record -> record.getAnalysisReason() != null && !record.getAnalysisReason().isBlank()),
+                "ambiguous test rows should carry analysis reasons");
     }
 
     private void assertRow(ManualConfirmationMergeResult result,

@@ -13,6 +13,7 @@ public class ManualConfirmationRecord {
     private String comment;
     private String normalizedTableName;
     private String normalizedDiffCategory;
+    private String analysisReason;
 
     public String getSourceFileName() {
         return sourceFileName;
@@ -108,5 +109,13 @@ public class ManualConfirmationRecord {
 
     public void setNormalizedDiffCategory(String normalizedDiffCategory) {
         this.normalizedDiffCategory = normalizedDiffCategory;
+    }
+
+    public String getAnalysisReason() {
+        return analysisReason;
+    }
+
+    public void setAnalysisReason(String analysisReason) {
+        this.analysisReason = analysisReason;
     }
 }

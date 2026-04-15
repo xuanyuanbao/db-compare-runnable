@@ -24,6 +24,7 @@ public class ManualConfirmationMergedRow {
     private String matchedTableName;
     private String matchedDiffType;
     private String matchedDiffDetail;
+    private int candidateCount;
     private final List<ManualConfirmationRecord> candidateRecords = new ArrayList<>();
 
     public ColumnComparisonRecord getAiRecord() {
@@ -168,6 +169,14 @@ public class ManualConfirmationMergedRow {
 
     public void setMatchedDiffDetail(String matchedDiffDetail) {
         this.matchedDiffDetail = matchedDiffDetail;
+    }
+
+    public int getCandidateCount() {
+        return candidateCount;
+    }
+
+    public void setCandidateCount(int candidateCount) {
+        this.candidateCount = candidateCount;
     }
 
     public List<ManualConfirmationRecord> getCandidateRecords() {

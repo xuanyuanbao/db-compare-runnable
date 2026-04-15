@@ -19,11 +19,9 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
-import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -32,13 +30,19 @@ public class ManualConfirmationMergedExcelWriter {
             "源数据库", "源Schema", "源表", "目标ViewSchema", "目标View", "目标TableSchema", "目标Table",
             "字段名", "AI差异类型", "AI差异详情", "风险等级",
             "责任人", "确认结果_原始值", "确认结果_标准值", "附加说明",
-            "匹配状态", "匹配依据", "匹配来源sheet", "测试组原始表名", "测试组原始不一致类型", "测试组原始不一致详细"
+            "匹配状态", "匹配依据", "候选数", "匹配来源sheet", "测试组原始表名", "测试组原始不一致类型", "测试组原始不一致详细"
     };
+
     private static final String[] TABLE_STATUS_HEADERS = {
             "源数据库", "源Schema", "源表", "目标ViewSchema", "目标View", "目标TableSchema", "目标Table",
-            "差异总数", "已匹配数", "未匹配数", "歧义数", "责任人", "主要确认结果", "风险等级"
+            "差异总数", "已匹配数", "未匹配数", "歧义数", "匹配率", "责任人", "主要确认结果", "风险等级"
     };
+
     private static final String[] SUMMARY_HEADERS = {"项目", "数量", "占比"};
+    private static final String[] OWNER_HEADERS = {"责任人", "问题总数", "已匹配数", "待确认数", "无影响数", "已修复数", "已废弃数", "匹配率", "已确认率"};
+    private static final String[] UNMATCHED_AI_HEADERS = {"源数据库", "源Schema", "源表", "目标ViewSchema", "目标View", "目标TableSchema", "目标Table", "字段名", "AI差异类型", "AI差异详情", "风险等级", "候选数", "未匹配原因"};
+    private static final String[] UNMATCHED_TEST_HEADERS = {"来源sheet", "行号", "表名", "责任人", "不一致类型", "不一致详细", "确认结果", "附加说明", "分析原因"};
+    private static final String[] AMBIGUOUS_HEADERS = {"记录类型", "来源sheet", "行号/字段", "表名", "不一致类型", "不一致详细", "候选数", "说明"};
 
     public void write(Path path, CompareConfig compareConfig, ManualConfirmationMergeResult mergeResult) {
         try {
@@ -72,7 +76,7 @@ public class ManualConfirmationMergedExcelWriter {
         setColumnWidths(sheet, 1, 1, 90);
 
         int rowIndex = 0;
-        rowIndex = writePair(sheet, rowIndex, "数据来源", "AI内部结构化差异结果 + 测试组人工确认Excel", styles);
+        rowIndex = writePair(sheet, rowIndex, "数据来源", "AI 结构化差异结果 + 测试组人工确认 Excel", styles);
         rowIndex = writePair(sheet, rowIndex, "融合开关", compareConfig.getReport().getManualConfirmation().isEnabled() ? "开启" : "关闭", styles);
         rowIndex = writePair(sheet, rowIndex, "测试组Excel路径", compareConfig.getReport().getManualConfirmation().resolveExcelPath(), styles);
         rowIndex = writePair(sheet, rowIndex, "融合输出路径", compareConfig.getOutput().getManualConfirmationExcelPath(), styles);
@@ -82,7 +86,7 @@ public class ManualConfirmationMergedExcelWriter {
         rowIndex = writePair(sheet, rowIndex, "歧义AI记录数", Integer.toString(countMergedRows(mergeResult, ManualConfirmationMatchStatus.AMBIGUOUS_AI)), styles);
         rowIndex = writePair(sheet, rowIndex, "未匹配测试组记录数", Integer.toString(mergeResult.getUnmatchedTestRecords().size()), styles);
         rowIndex = writePair(sheet, rowIndex, "歧义测试组记录数", Integer.toString(mergeResult.getAmbiguousTestRecords().size()), styles);
-        writePair(sheet, rowIndex, "匹配规则", "优先按表名匹配，再按不一致类型、字段名、差异详情增强匹配；无法唯一确定时标记为歧义。", styles);
+        writePair(sheet, rowIndex, "匹配策略", "优先按表名匹配，再按差异类型、字段名和差异详情增强匹配；未匹配与歧义记录会单独输出原因。", styles);
     }
 
     private void writeMergedSheet(XSSFWorkbook workbook, Styles styles, ManualConfirmationMergeResult mergeResult) {
@@ -110,6 +114,7 @@ public class ManualConfirmationMergedExcelWriter {
             writeCell(excelRow, columnIndex++, row.getComment(), styles.body);
             writeCell(excelRow, columnIndex++, matchStatusText(row.getMatchStatus()), matchStatusStyle(styles, row.getMatchStatus()));
             writeCell(excelRow, columnIndex++, row.getMatchBasis(), styles.body);
+            writeCell(excelRow, columnIndex++, Integer.toString(row.getCandidateCount()), styles.body);
             writeCell(excelRow, columnIndex++, row.getMatchedSheetName(), styles.body);
             writeCell(excelRow, columnIndex++, row.getMatchedTableName(), styles.body);
             writeCell(excelRow, columnIndex++, row.getMatchedDiffType(), styles.body);
@@ -150,6 +155,7 @@ public class ManualConfirmationMergedExcelWriter {
             writeCell(excelRow, columnIndex++, Integer.toString(summary.matchedCount), styles.body);
             writeCell(excelRow, columnIndex++, Integer.toString(summary.unmatchedCount), styles.body);
             writeCell(excelRow, columnIndex++, Integer.toString(summary.ambiguousCount), styles.body);
+            writeCell(excelRow, columnIndex++, percentage(summary.matchedCount, summary.totalCount), styles.body);
             writeCell(excelRow, columnIndex++, join(summary.owners), styles.body);
             writeCell(excelRow, columnIndex++, join(summary.confirmResults), styles.body);
             writeCell(excelRow, columnIndex, summary.riskLevel, riskStyle(styles, summary.riskLevel));
@@ -176,8 +182,7 @@ public class ManualConfirmationMergedExcelWriter {
 
     private void writeOwnerSummarySheet(XSSFWorkbook workbook, Styles styles, ManualConfirmationMergeResult mergeResult) {
         var sheet = workbook.createSheet("责任人汇总");
-        String[] headers = {"责任人", "问题总数", "已匹配数", "待确认数", "无影响数", "已修复数", "已废弃数"};
-        writeHeaders(sheet, 0, headers, styles.header);
+        writeHeaders(sheet, 0, OWNER_HEADERS, styles.header);
         Map<String, OwnerSummary> summaries = new LinkedHashMap<>();
         for (ManualConfirmationMergedRow row : mergeResult.getMergedRows()) {
             String owner = row.getOwner();
@@ -197,13 +202,15 @@ public class ManualConfirmationMergedExcelWriter {
             writeCell(excelRow, 4, Integer.toString(summary.noImpactCount), styles.body);
             writeCell(excelRow, 5, Integer.toString(summary.fixedCount), styles.body);
             writeCell(excelRow, 6, Integer.toString(summary.abandonedCount), styles.body);
+            writeCell(excelRow, 7, percentage(summary.matchedCount, summary.totalCount), styles.body);
+            writeCell(excelRow, 8, percentage(summary.confirmedCount(), summary.totalCount), styles.body);
         }
-        autosize(sheet, headers.length);
+        autosize(sheet, OWNER_HEADERS.length);
     }
 
     private void writeUnmatchedAiSheet(XSSFWorkbook workbook, Styles styles, ManualConfirmationMergeResult mergeResult) {
         var sheet = workbook.createSheet("未匹配AI记录");
-        writeHeaders(sheet, 0, MERGED_HEADERS, styles.header);
+        writeHeaders(sheet, 0, UNMATCHED_AI_HEADERS, styles.header);
         int rowIndex = 1;
         for (ManualConfirmationMergedRow row : mergeResult.getMergedRows()) {
             if (row.getMatchStatus() != ManualConfirmationMatchStatus.UNMATCHED_AI) {
@@ -222,16 +229,15 @@ public class ManualConfirmationMergedExcelWriter {
             writeCell(excelRow, 8, row.getAiDiffCategory(), styles.body);
             writeCell(excelRow, 9, OutputTextFormatter.messageText(row.getAiDiffDetail()), styles.body);
             writeCell(excelRow, 10, row.getRiskLevel(), riskStyle(styles, row.getRiskLevel()));
-            writeCell(excelRow, 15, matchStatusText(row.getMatchStatus()), matchStatusStyle(styles, row.getMatchStatus()));
-            writeCell(excelRow, 16, row.getMatchBasis(), styles.body);
+            writeCell(excelRow, 11, Integer.toString(row.getCandidateCount()), styles.body);
+            writeCell(excelRow, 12, row.getMatchBasis(), styles.body);
         }
-        autosize(sheet, MERGED_HEADERS.length);
+        autosize(sheet, UNMATCHED_AI_HEADERS.length);
     }
 
     private void writeUnmatchedTestSheet(XSSFWorkbook workbook, Styles styles, ManualConfirmationMergeResult mergeResult) {
         var sheet = workbook.createSheet("未匹配测试组记录");
-        String[] headers = {"来源sheet", "行号", "表名", "责任人", "不一致类型", "不一致详细", "确认结果", "附加说明"};
-        writeHeaders(sheet, 0, headers, styles.header);
+        writeHeaders(sheet, 0, UNMATCHED_TEST_HEADERS, styles.header);
         int rowIndex = 1;
         for (ManualConfirmationRecord record : mergeResult.getUnmatchedTestRecords()) {
             Row excelRow = sheet.createRow(rowIndex++);
@@ -243,14 +249,14 @@ public class ManualConfirmationMergedExcelWriter {
             writeCell(excelRow, 5, record.getDiffDetailRaw(), styles.body);
             writeCell(excelRow, 6, record.getConfirmResultRaw(), styles.body);
             writeCell(excelRow, 7, record.getComment(), styles.body);
+            writeCell(excelRow, 8, record.getAnalysisReason(), styles.body);
         }
-        autosize(sheet, headers.length);
+        autosize(sheet, UNMATCHED_TEST_HEADERS.length);
     }
 
     private void writeAmbiguousSheet(XSSFWorkbook workbook, Styles styles, ManualConfirmationMergeResult mergeResult) {
         var sheet = workbook.createSheet("歧义匹配记录");
-        String[] headers = {"记录类型", "来源sheet", "行号/字段", "表名", "不一致类型", "不一致详细", "候选数量", "说明"};
-        writeHeaders(sheet, 0, headers, styles.header);
+        writeHeaders(sheet, 0, AMBIGUOUS_HEADERS, styles.header);
         int rowIndex = 1;
         for (ManualConfirmationMergedRow row : mergeResult.getMergedRows()) {
             if (row.getMatchStatus() != ManualConfirmationMatchStatus.AMBIGUOUS_AI) {
@@ -263,7 +269,7 @@ public class ManualConfirmationMergedExcelWriter {
             writeCell(excelRow, 3, row.getAiRecord().getSourceTableName(), styles.body);
             writeCell(excelRow, 4, row.getAiDiffCategory(), styles.body);
             writeCell(excelRow, 5, row.getAiDiffDetail(), styles.body);
-            writeCell(excelRow, 6, Integer.toString(row.getCandidateRecords().size()), styles.body);
+            writeCell(excelRow, 6, Integer.toString(row.getCandidateCount()), styles.body);
             writeCell(excelRow, 7, row.getMatchBasis(), styles.body);
         }
         for (ManualConfirmationRecord record : mergeResult.getAmbiguousTestRecords()) {
@@ -275,9 +281,9 @@ public class ManualConfirmationMergedExcelWriter {
             writeCell(excelRow, 4, record.getDiffTypeRaw(), styles.body);
             writeCell(excelRow, 5, record.getDiffDetailRaw(), styles.body);
             writeCell(excelRow, 6, "多候选", styles.body);
-            writeCell(excelRow, 7, "测试组记录命中了多条 AI 记录或被多条 AI 记录竞争", styles.body);
+            writeCell(excelRow, 7, record.getAnalysisReason(), styles.body);
         }
-        autosize(sheet, headers.length);
+        autosize(sheet, AMBIGUOUS_HEADERS.length);
     }
 
     private int writePair(org.apache.poi.ss.usermodel.Sheet sheet, int rowIndex, String key, String value, Styles styles) {
@@ -294,7 +300,7 @@ public class ManualConfirmationMergedExcelWriter {
             Row row = sheet.createRow(rowIndex++);
             writeCell(row, 0, entry.getKey(), styles.body);
             writeCell(row, 1, Integer.toString(entry.getValue()), styles.body);
-            writeCell(row, 2, total == 0 ? "0.00%" : String.format(java.util.Locale.ROOT, "%.2f%%", entry.getValue() * 100.0 / total), styles.body);
+            writeCell(row, 2, percentage(entry.getValue(), total), styles.body);
         }
         autosize(sheet, SUMMARY_HEADERS.length);
     }
@@ -307,6 +313,13 @@ public class ManualConfirmationMergedExcelWriter {
             }
         }
         return count;
+    }
+
+    private String percentage(int numerator, int denominator) {
+        if (denominator <= 0) {
+            return "0.00%";
+        }
+        return String.format(Locale.ROOT, "%.2f%%", numerator * 100.0 / denominator);
     }
 
     private CellStyle riskStyle(Styles styles, String riskLevel) {
@@ -356,7 +369,8 @@ public class ManualConfirmationMergedExcelWriter {
 
     private void autosize(org.apache.poi.ss.usermodel.Sheet sheet, int columnCount) {
         for (int index = 0; index < columnCount; index++) {
-            sheet.setColumnWidth(index, Math.min(80, Math.max(14, sheet.getRow(0).getCell(index).getStringCellValue().length() + 4)) * 256);
+            int headerLength = sheet.getRow(0).getCell(index).getStringCellValue().length();
+            sheet.setColumnWidth(index, Math.min(90, Math.max(14, headerLength + 4)) * 256);
         }
     }
 
@@ -496,6 +510,10 @@ public class ManualConfirmationMergedExcelWriter {
             } else if ("已废弃".equals(normalized)) {
                 abandonedCount++;
             }
+        }
+
+        private int confirmedCount() {
+            return noImpactCount + fixedCount + abandonedCount;
         }
     }
 }
