@@ -1,0 +1,3 @@
+targetViewSchema,targetView,targetTableSchema,targetTable
+VIEW_APP,CUSTOMER_VIEW,ODS,CUSTOMER_BASE
+VIEW_APP,CUSTOMER_VIEW,DWD,CUSTOMER_DIM

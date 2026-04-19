@@ -28,8 +28,11 @@ public class CompareSummary {
     }
 
     public void recordDiffs(List<DiffRecord> diffRecords) {
-        diffCount += diffRecords.size();
         for (DiffRecord diffRecord : diffRecords) {
+            if (!diffRecord.isAffectsResult()) {
+                continue;
+            }
+            diffCount++;
             diffTypeCount.merge(diffRecord.getDiffType(), 1, Integer::sum);
         }
     }

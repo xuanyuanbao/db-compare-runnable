@@ -3,6 +3,7 @@ package com.example.dbcompare.tests;
 import com.example.dbcompare.config.ConfigLoader;
 import com.example.dbcompare.domain.enums.CompareMode;
 import com.example.dbcompare.domain.enums.CompareObjectType;
+import com.example.dbcompare.domain.enums.CompareRelationMode;
 import com.example.dbcompare.domain.enums.DatabaseType;
 import com.example.dbcompare.domain.model.CompareConfig;
 
@@ -43,9 +44,13 @@ public final class ConfigLoaderTest {
 
         properties.setProperty("compare.includeSchemas", "LEGACY_A");
         properties.setProperty("compare.excludeTables", "TMP_A,TMP_B");
+        properties.setProperty("compare.options.compareExists", "true");
+        properties.setProperty("compare.options.compareType", "true");
         properties.setProperty("compare.options.compareNullable", "false");
         properties.setProperty("compare.options.compareDefaultValue", "false");
         properties.setProperty("compare.options.compareLength", "true");
+        properties.setProperty("compare.options.relationMode", "table_to_view");
+        properties.setProperty("compare.options.typeMappings.DATE", "DATE,TIMESTAMP");
         properties.setProperty("compare.options.objectType", "view");
         properties.setProperty("compare.options.sourceLoadThreads", "2");
         properties.setProperty("report.manualConfirmation.enabled", "true");
@@ -83,10 +88,18 @@ public final class ConfigLoaderTest {
         TestSupport.assertEquals(1, config.getTableMappings().size(), "table mapping count should be loaded");
         TestSupport.assertEquals(1, config.getIncludeSchemas().size(), "global include schemas should be loaded");
         TestSupport.assertEquals(2, config.getExcludeTables().size(), "global exclude tables should be loaded");
+        TestSupport.assertTrue(config.getOptions().isCompareExists(),
+                "compare exists option should default to true when explicitly enabled");
+        TestSupport.assertTrue(config.getOptions().isCompareType(),
+                "compare type option should default to true when explicitly enabled");
         TestSupport.assertTrue(!config.getOptions().isCompareNullable(),
                 "compare nullable option should honor explicit false");
         TestSupport.assertTrue(!config.getOptions().isCompareDefaultValue(),
                 "compare default option should honor explicit false");
+        TestSupport.assertEquals(CompareRelationMode.TABLE_TO_VIEW, config.getOptions().getRelationMode(),
+                "relation mode should be loaded from config");
+        TestSupport.assertTrue(config.getOptions().getTypeMappings().get("DATE").contains("TIMESTAMP"),
+                "custom type mappings should be parsed from config");
         TestSupport.assertEquals(CompareObjectType.VIEW, config.getOptions().getObjectType(),
                 "object type should be loaded from config");
         TestSupport.assertEquals(2, config.getOptions().getSourceLoadThreads(),

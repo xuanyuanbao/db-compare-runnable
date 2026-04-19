@@ -1,6 +1,7 @@
 package com.example.dbcompare.tests;
 
 import com.example.dbcompare.domain.enums.ComparisonStatus;
+import com.example.dbcompare.domain.enums.DiffGroup;
 import com.example.dbcompare.domain.model.ColumnComparisonRecord;
 import com.example.dbcompare.infrastructure.output.ExcelReportWriter;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -41,6 +42,8 @@ class ExcelReportWriterTest {
             assertEquals("COL_3", workbook.getSheetAt(1).getRow(1).getCell(5).getStringCellValue(), "second sheet should continue with later records");
             assertEquals("COL_5", workbook.getSheetAt(2).getRow(1).getCell(5).getStringCellValue(), "final sheet should contain the tail record");
             assertEquals("一致", workbook.getSheetAt(0).getRow(1).getCell(20).getStringCellValue(), "status values should be localized");
+            assertEquals("主差异", workbook.getSheetAt(0).getRow(1).getCell(21).getStringCellValue(), "diff groups should be written to the detail workbook");
+            assertEquals("是", workbook.getSheetAt(0).getRow(1).getCell(22).getStringCellValue(), "result impact should be written to the detail workbook");
         }
     }
 
@@ -55,6 +58,7 @@ class ExcelReportWriterTest {
         record.setSourceColumnExists(true);
         record.setTargetColumnExists(true);
         record.setOverallStatus(ComparisonStatus.MATCH);
+        record.setDiffGroup(DiffGroup.MAIN);
         return record;
     }
 }

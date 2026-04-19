@@ -2,6 +2,7 @@ package com.example.dbcompare.config;
 
 import com.example.dbcompare.domain.enums.CompareMode;
 import com.example.dbcompare.domain.enums.CompareObjectType;
+import com.example.dbcompare.domain.enums.CompareRelationMode;
 import com.example.dbcompare.domain.enums.DatabaseType;
 import com.example.dbcompare.domain.model.CompareConfig;
 import com.example.dbcompare.domain.model.DataSourceInfo;
@@ -12,6 +13,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 
 public class ConfigLoader {
@@ -61,12 +65,17 @@ public class ConfigLoader {
         splitToList(properties.getProperty("compare.includeTables"), config.getIncludeTables());
         splitToList(properties.getProperty("compare.excludeTables"), config.getExcludeTables());
 
-        config.getOptions().setCompareNullable(boolValue(properties, "compare.options.compareNullable", true));
-        config.getOptions().setCompareDefaultValue(boolValue(properties, "compare.options.compareDefaultValue", true));
+        config.getOptions().setCompareExists(boolValue(properties, "compare.options.compareExists", true));
+        config.getOptions().setCompareType(boolValue(properties, "compare.options.compareType", true));
+        config.getOptions().setCompareNullable(boolValue(properties, "compare.options.compareNullable", false));
+        config.getOptions().setCompareDefaultValue(boolValue(properties, "compare.options.compareDefaultValue", false));
         config.getOptions().setCompareLength(boolValue(properties, "compare.options.compareLength", true));
         config.getOptions().setSourceLoadThreads(intValue(properties, "compare.options.sourceLoadThreads", 4));
         config.getOptions().setObjectType(enumValue(properties, CompareObjectType.class, CompareObjectType.TABLE,
                 "compare.options.objectType", "compare.options.object-type"));
+        config.getOptions().setRelationMode(enumValue(properties, CompareRelationMode.class, CompareRelationMode.TABLE_TO_TABLE,
+                "compare.options.relationMode", "compare.options.relation-mode"));
+        loadTypeMappings(properties, config);
         config.getReport().getManualConfirmation().setEnabled(boolValue(properties, "report.manualConfirmation.enabled", false));
         config.getReport().getManualConfirmation().setExcelDir(firstNonBlank(
                 properties.getProperty("report.manualConfirmation.excelDir"),
@@ -100,6 +109,23 @@ public class ConfigLoader {
         if (summaryPath != null && !summaryPath.isBlank()) config.getOutput().setSummaryPath(summaryPath.trim());
 
         return config;
+    }
+
+    private void loadTypeMappings(Properties properties, CompareConfig config) {
+        for (Map.Entry<Object, Object> entry : properties.entrySet()) {
+            String key = entry.getKey().toString();
+            if (!key.startsWith("compare.options.typeMappings.") && !key.startsWith("compare.options.type-mappings.")) {
+                continue;
+            }
+            int splitIndex = key.lastIndexOf('.');
+            if (splitIndex < 0 || splitIndex >= key.length() - 1) {
+                continue;
+            }
+            String canonicalType = key.substring(splitIndex + 1).trim();
+            List<String> aliases = new ArrayList<>();
+            splitToList(entry.getValue() == null ? null : entry.getValue().toString(), aliases);
+            config.getOptions().putTypeMapping(canonicalType, aliases);
+        }
     }
 
     private DataSourceInfo loadDataSource(Properties properties, String prefix) {

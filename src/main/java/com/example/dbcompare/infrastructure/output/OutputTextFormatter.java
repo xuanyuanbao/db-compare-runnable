@@ -1,6 +1,7 @@
 package com.example.dbcompare.infrastructure.output;
 
 import com.example.dbcompare.domain.enums.ComparisonStatus;
+import com.example.dbcompare.domain.enums.DiffGroup;
 import com.example.dbcompare.domain.enums.DiffType;
 
 import java.util.ArrayList;
@@ -45,13 +46,24 @@ final class OutputTextFormatter {
         return switch (diffType) {
             case SOURCE_TABLE_NOT_FOUND -> "源表不存在";
             case SOURCE_TABLE_AMBIGUOUS -> "源表匹配歧义";
-            case TARGET_TABLE_NOT_FOUND -> "目标表不存在";
+            case TARGET_TABLE_NOT_FOUND -> "目标对象不存在";
             case COLUMN_MISSING_IN_SOURCE -> "源端缺字段";
             case COLUMN_MISSING_IN_TARGET -> "目标端缺字段";
+            case VIEW_MISSING_COLUMN_INFO -> "视图未包含源字段";
             case COLUMN_TYPE_MISMATCH -> "字段类型不一致";
             case COLUMN_LENGTH_MISMATCH -> "字段长度不一致";
             case COLUMN_DEFAULT_MISMATCH -> "默认值不一致";
             case COLUMN_NULLABLE_MISMATCH -> "可空性不一致";
+        };
+    }
+
+    static String diffGroupText(DiffGroup diffGroup) {
+        if (diffGroup == null) {
+            return "";
+        }
+        return switch (diffGroup) {
+            case MAIN -> "主差异";
+            case INFO -> "信息差异";
         };
     }
 
@@ -108,15 +120,16 @@ final class OutputTextFormatter {
         }
         return value
                 .replace("Source table not found", "源表不存在")
-                .replace("Target table not found", "目标表不存在")
+                .replace("Target table not found", "目标对象不存在")
                 .replace("source table not found", "源表不存在")
-                .replace("target table not found", "目标表不存在")
+                .replace("target table not found", "目标对象不存在")
                 .replace("Column exists only in target", "字段仅存在于目标端")
                 .replace("Column exists only in source", "字段仅存在于源端")
                 .replace("column exists only in target", "字段仅存在于目标端")
                 .replace("column exists only in source", "字段仅存在于源端")
                 .replace("target column missing", "字段仅存在于源端")
                 .replace("source column missing", "字段仅存在于目标端")
+                .replace("View does not expose source column", "视图未暴露源表字段")
                 .replace("Type mismatch", "类型不一致")
                 .replace("Length mismatch", "长度不一致")
                 .replace("Default value mismatch", "默认值不一致")
@@ -127,6 +140,6 @@ final class OutputTextFormatter {
                 .replace("nullable mismatch", "可空性不一致")
                 .replace("MATCH", "一致")
                 .replace("MISMATCH", "不一致")
-                .replace("Multiple source schemas matched the same table name: ", "多个源Schema匹配到了同一张表：");
+                .replace("Multiple source schemas matched the same table name: ", "多个源 Schema 匹配到同一张表：");
     }
 }

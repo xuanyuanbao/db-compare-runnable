@@ -1,6 +1,7 @@
 package com.example.dbcompare.domain.model;
 
 import com.example.dbcompare.domain.enums.ComparisonStatus;
+import com.example.dbcompare.domain.enums.DiffGroup;
 
 public class ColumnComparisonRecord {
     private String sourceDatabaseName;
@@ -26,6 +27,7 @@ public class ColumnComparisonRecord {
     private String targetNullable;
     private ComparisonStatus nullableStatus;
     private ComparisonStatus overallStatus;
+    private DiffGroup diffGroup = DiffGroup.MAIN;
     private String diffTypes;
     private String message;
 
@@ -79,8 +81,11 @@ public class ColumnComparisonRecord {
     public void setNullableStatus(ComparisonStatus nullableStatus) { this.nullableStatus = nullableStatus; }
     public ComparisonStatus getOverallStatus() { return overallStatus; }
     public void setOverallStatus(ComparisonStatus overallStatus) { this.overallStatus = overallStatus; }
+    public DiffGroup getDiffGroup() { return diffGroup; }
+    public void setDiffGroup(DiffGroup diffGroup) { this.diffGroup = diffGroup == null ? DiffGroup.MAIN : diffGroup; }
     public String getDiffTypes() { return diffTypes; }
     public void setDiffTypes(String diffTypes) { this.diffTypes = diffTypes; }
     public String getMessage() { return message; }
     public void setMessage(String message) { this.message = message; }
+    public boolean isAffectsResult() { return diffGroup == DiffGroup.MAIN; }
 }

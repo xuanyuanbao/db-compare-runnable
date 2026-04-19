@@ -3,6 +3,8 @@ package com.example.dbcompare.util;
 import com.example.dbcompare.domain.enums.DatabaseType;
 
 import java.util.EnumMap;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 public class TypeNormalizer {
@@ -17,12 +19,17 @@ public class TypeNormalizer {
     }
 
     public String normalize(DatabaseType databaseType, String rawType) {
+        return normalize(databaseType, rawType, Map.of());
+    }
+
+    public String normalize(DatabaseType databaseType, String rawType, Map<String, List<String>> customTypeMappings) {
         String normalizedType = normalizeCommon(rawType);
         if (normalizedType == null) {
             return null;
         }
         TypeNormalizationRule rule = rules.getOrDefault(databaseType, TypeNormalizationRule.identity());
-        return rule.normalize(normalizedType);
+        String normalizedByRule = rule.normalize(normalizedType);
+        return normalizeCustomMappings(normalizedByRule, customTypeMappings);
     }
 
     private String normalizeCommon(String rawType) {
@@ -34,5 +41,26 @@ public class TypeNormalizer {
         if ("CHARACTER".equals(type)) return "CHAR";
         if ("DECIMAL".equals(type)) return "NUMERIC";
         return type;
+    }
+
+    private String normalizeCustomMappings(String normalizedType, Map<String, List<String>> customTypeMappings) {
+        if (normalizedType == null || customTypeMappings == null || customTypeMappings.isEmpty()) {
+            return normalizedType;
+        }
+        Map<String, String> aliasToCanonical = new LinkedHashMap<>();
+        for (Map.Entry<String, List<String>> entry : customTypeMappings.entrySet()) {
+            String canonical = normalizeCommon(entry.getKey());
+            if (canonical == null) {
+                continue;
+            }
+            aliasToCanonical.put(canonical, canonical);
+            for (String alias : entry.getValue()) {
+                String normalizedAlias = normalizeCommon(alias);
+                if (normalizedAlias != null) {
+                    aliasToCanonical.put(normalizedAlias, canonical);
+                }
+            }
+        }
+        return aliasToCanonical.getOrDefault(normalizedType, normalizedType);
     }
 }

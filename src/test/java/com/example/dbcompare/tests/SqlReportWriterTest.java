@@ -1,6 +1,7 @@
 package com.example.dbcompare.tests;
 
 import com.example.dbcompare.domain.enums.ComparisonStatus;
+import com.example.dbcompare.domain.enums.DiffGroup;
 import com.example.dbcompare.domain.model.ColumnComparisonRecord;
 import com.example.dbcompare.infrastructure.output.SqlReportWriter;
 import org.junit.jupiter.api.Test;
@@ -29,6 +30,7 @@ class SqlReportWriterTest {
         assertTrue(sql.contains("`源数据库` VARCHAR(128)"), "sql output should keep the localized detail columns in the ddl");
         assertTrue(sql.contains("`目标Schema` VARCHAR(128)"), "sql output should keep the original target columns");
         assertTrue(sql.contains("`源端存在` TINYINT(1)"), "sql output should use MySQL-friendly boolean storage");
+        assertTrue(sql.contains("`是否影响结果` TINYINT(1)"), "sql output should keep the result-impact flag");
         assertTrue(sql.contains("ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;"), "sql output should use a MySQL-friendly table definition");
         assertTrue(sql.contains("INSERT INTO `compare_detail_tmp`"), "sql output should include insert statements");
         assertTrue(sql.contains("),\n(") || sql.contains("),\r\n("), "sql output should batch multiple rows into one insert");
@@ -36,6 +38,7 @@ class SqlReportWriterTest {
         assertTrue(sql.contains("'不一致'"), "sql output should localize status values");
         assertTrue(sql.contains("'目标端缺字段'"), "sql output should localize diff types");
         assertTrue(sql.contains("'字段仅存在于源端'"), "sql output should localize messages");
+        assertTrue(sql.contains("'主差异'"), "sql output should persist the diff group");
     }
 
     private ColumnComparisonRecord record(String columnName) {
@@ -53,6 +56,7 @@ class SqlReportWriterTest {
         record.setSourceDefaultValue("O'Reilly \\ default\nline");
         record.setDefaultStatus(ComparisonStatus.MISMATCH);
         record.setOverallStatus(ComparisonStatus.MISMATCH);
+        record.setDiffGroup(DiffGroup.MAIN);
         record.setDiffTypes("COLUMN_MISSING_IN_TARGET");
         record.setMessage("target column missing");
         return record;

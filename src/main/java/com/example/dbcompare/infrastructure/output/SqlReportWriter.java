@@ -16,6 +16,7 @@ public class SqlReportWriter {
     private static final int INSERT_BATCH_SIZE = 500;
     private static final int SOURCE_EXISTS_INDEX = 6;
     private static final int TARGET_EXISTS_INDEX = 7;
+    private static final int AFFECTS_RESULT_INDEX = 22;
     private static final String[] COLUMN_TYPES = {
             "VARCHAR(128)", "VARCHAR(128)", "VARCHAR(128)", "VARCHAR(128)", "VARCHAR(128)", "VARCHAR(128)",
             "TINYINT(1)", "TINYINT(1)",
@@ -23,7 +24,7 @@ public class SqlReportWriter {
             "VARCHAR(64)", "VARCHAR(64)", "VARCHAR(32)",
             "TEXT", "TEXT", "VARCHAR(32)",
             "VARCHAR(32)", "VARCHAR(32)", "VARCHAR(32)",
-            "VARCHAR(32)", "VARCHAR(512)", "TEXT"
+            "VARCHAR(32)", "VARCHAR(32)", "TINYINT(1)", "VARCHAR(512)", "TEXT"
     };
 
     public SqlReportSession open(Path path, String tableName) {
@@ -151,7 +152,7 @@ public class SqlReportWriter {
         }
 
         private boolean isBooleanColumn(int columnIndex) {
-            return columnIndex == SOURCE_EXISTS_INDEX || columnIndex == TARGET_EXISTS_INDEX;
+            return columnIndex == SOURCE_EXISTS_INDEX || columnIndex == TARGET_EXISTS_INDEX || columnIndex == AFFECTS_RESULT_INDEX;
         }
 
         private String[] valuesOf(ColumnComparisonRecord record) {
@@ -177,6 +178,8 @@ public class SqlReportWriter {
                     OutputTextFormatter.nullableText(record.getTargetNullable()),
                     statusText(record.getNullableStatus()),
                     statusText(record.getOverallStatus()),
+                    OutputTextFormatter.diffGroupText(record.getDiffGroup()),
+                    record.isAffectsResult() ? "1" : "0",
                     OutputTextFormatter.diffTypesText(record.getDiffTypes()),
                     OutputTextFormatter.messageText(record.getMessage())
             };

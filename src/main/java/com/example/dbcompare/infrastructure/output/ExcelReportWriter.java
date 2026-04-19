@@ -24,13 +24,13 @@ import java.util.List;
 public class ExcelReportWriter {
     private static final String DETAIL_SHEET_NAME = "明细";
     static final String[] DETAIL_HEADERS = {
-            "源数据库", "源Schema", "源表", "目标Schema", "目标表", "字段名",
+            "源数据库", "源Schema", "源表", "目标Schema", "目标对象", "字段名",
             "源端存在", "目标端存在",
             "源类型", "目标类型", "类型状态",
             "源长度", "目标长度", "长度状态",
             "源默认值", "目标默认值", "默认值状态",
             "源端可空", "目标端可空", "可空状态",
-            "总体状态", "差异类型", "说明"
+            "整体状态", "差异分组", "是否影响结果", "差异类型", "说明"
     };
 
     private final int maxRowsPerSheet;
@@ -57,7 +57,8 @@ public class ExcelReportWriter {
             CellStyle matchStyle = createStatusStyle(workbook, IndexedColors.LIGHT_GREEN);
             CellStyle mismatchStyle = createStatusStyle(workbook, IndexedColors.ROSE);
             CellStyle naStyle = createStatusStyle(workbook, IndexedColors.GREY_25_PERCENT);
-            return new ExcelReportSession(path, workbook, headerStyle, matchStyle, mismatchStyle, naStyle, maxRowsPerSheet);
+            CellStyle infoStyle = createStatusStyle(workbook, IndexedColors.LIGHT_YELLOW);
+            return new ExcelReportSession(path, workbook, headerStyle, matchStyle, mismatchStyle, naStyle, infoStyle, maxRowsPerSheet);
         } catch (IOException e) {
             throw new IllegalStateException("Failed to open Excel report: " + path, e);
         }
@@ -98,6 +99,7 @@ public class ExcelReportWriter {
         private final CellStyle matchStyle;
         private final CellStyle mismatchStyle;
         private final CellStyle naStyle;
+        private final CellStyle infoStyle;
         private final int maxRowsPerSheet;
 
         private SXSSFSheet sheet;
@@ -110,6 +112,7 @@ public class ExcelReportWriter {
                                    CellStyle matchStyle,
                                    CellStyle mismatchStyle,
                                    CellStyle naStyle,
+                                   CellStyle infoStyle,
                                    int maxRowsPerSheet) {
             this.path = path;
             this.workbook = workbook;
@@ -117,6 +120,7 @@ public class ExcelReportWriter {
             this.matchStyle = matchStyle;
             this.mismatchStyle = mismatchStyle;
             this.naStyle = naStyle;
+            this.infoStyle = infoStyle;
             this.maxRowsPerSheet = maxRowsPerSheet;
             this.sheet = createSheet();
         }
@@ -136,17 +140,19 @@ public class ExcelReportWriter {
                 writeCell(row, columnIndex++, OutputTextFormatter.boolText(record.isTargetColumnExists()), null);
                 writeCell(row, columnIndex++, record.getSourceType(), null);
                 writeCell(row, columnIndex++, record.getTargetType(), null);
-                writeCell(row, columnIndex++, statusText(record.getTypeStatus()), statusStyle(record.getTypeStatus()));
+                writeCell(row, columnIndex++, statusText(record.getTypeStatus()), statusStyle(record));
                 writeCell(row, columnIndex++, record.getSourceLength(), null);
                 writeCell(row, columnIndex++, record.getTargetLength(), null);
-                writeCell(row, columnIndex++, statusText(record.getLengthStatus()), statusStyle(record.getLengthStatus()));
+                writeCell(row, columnIndex++, statusText(record.getLengthStatus()), statusStyle(record));
                 writeCell(row, columnIndex++, record.getSourceDefaultValue(), null);
                 writeCell(row, columnIndex++, record.getTargetDefaultValue(), null);
-                writeCell(row, columnIndex++, statusText(record.getDefaultStatus()), statusStyle(record.getDefaultStatus()));
+                writeCell(row, columnIndex++, statusText(record.getDefaultStatus()), statusStyle(record));
                 writeCell(row, columnIndex++, OutputTextFormatter.nullableText(record.getSourceNullable()), null);
                 writeCell(row, columnIndex++, OutputTextFormatter.nullableText(record.getTargetNullable()), null);
-                writeCell(row, columnIndex++, statusText(record.getNullableStatus()), statusStyle(record.getNullableStatus()));
-                writeCell(row, columnIndex++, statusText(record.getOverallStatus()), statusStyle(record.getOverallStatus()));
+                writeCell(row, columnIndex++, statusText(record.getNullableStatus()), statusStyle(record));
+                writeCell(row, columnIndex++, statusText(record.getOverallStatus()), statusStyle(record));
+                writeCell(row, columnIndex++, OutputTextFormatter.diffGroupText(record.getDiffGroup()), statusStyle(record));
+                writeCell(row, columnIndex++, OutputTextFormatter.boolText(record.isAffectsResult()), statusStyle(record));
                 writeCell(row, columnIndex++, OutputTextFormatter.diffTypesText(record.getDiffTypes()), null);
                 writeCell(row, columnIndex, OutputTextFormatter.messageText(record.getMessage()), null);
             }
@@ -204,7 +210,11 @@ public class ExcelReportWriter {
             return OutputTextFormatter.comparisonStatusText(status);
         }
 
-        private CellStyle statusStyle(ComparisonStatus status) {
+        private CellStyle statusStyle(ColumnComparisonRecord record) {
+            if (!record.isAffectsResult()) {
+                return infoStyle;
+            }
+            ComparisonStatus status = record.getOverallStatus();
             if (status == null) {
                 return null;
             }

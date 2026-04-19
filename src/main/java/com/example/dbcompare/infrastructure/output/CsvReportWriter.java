@@ -12,7 +12,7 @@ import java.util.List;
 
 public class CsvReportWriter {
     private static final String[] HEADERS = {
-            "源数据库", "源Schema", "源表", "目标Schema", "目标表", "字段名", "差异类型", "源值", "目标值", "说明"
+            "源数据库", "源Schema", "源表", "目标Schema", "目标对象", "字段名", "差异分组", "是否影响结果", "差异类型", "源值", "目标值", "说明"
     };
 
     public CsvReportSession open(Path path) {
@@ -51,6 +51,10 @@ public class CsvReportWriter {
                     writer.write(',');
                     writer.write(csv(record.getColumnName()));
                     writer.write(',');
+                    writer.write(csv(OutputTextFormatter.diffGroupText(record.getDiffGroup())));
+                    writer.write(',');
+                    writer.write(csv(OutputTextFormatter.boolText(record.isAffectsResult())));
+                    writer.write(',');
                     writer.write(csv(OutputTextFormatter.diffTypeText(record.getDiffType())));
                     writer.write(',');
                     writer.write(csv(record.getSourceValue()));
@@ -71,7 +75,9 @@ public class CsvReportWriter {
         }
 
         private String csv(String value) {
-            if (value == null) return "";
+            if (value == null) {
+                return "";
+            }
             return '"' + value.replace("\"", "\"\"") + '"';
         }
     }

@@ -425,7 +425,7 @@ public class SummaryExcelReportWriter {
         }
 
         private boolean isFieldExistenceRecord(ColumnComparisonRecord record) {
-            return !record.isSourceColumnExists() || !record.isTargetColumnExists();
+            return !record.isSourceColumnExists() || !record.isTargetColumnExists() || containsDiff(record, DiffType.VIEW_MISSING_COLUMN_INFO);
         }
 
         private boolean containsDiff(ColumnComparisonRecord record, DiffType diffType) {
@@ -655,17 +655,20 @@ public class SummaryExcelReportWriter {
         }
 
         private void accept(ColumnComparisonRecord record) {
-            if (record.getOverallStatus() == ComparisonStatus.MISMATCH) {
+            if (record.isAffectsResult() && record.getOverallStatus() == ComparisonStatus.MISMATCH) {
                 mismatch = true;
             }
-            if (!record.isSourceColumnExists() || !record.isTargetColumnExists()) {
+            if (record.isAffectsResult() && (!record.isSourceColumnExists() || !record.isTargetColumnExists())) {
                 fullExists = false;
             }
             List<DiffType> parsedDiffTypes = parseDiffTypes(record.getDiffTypes());
             if (parsedDiffTypes.isEmpty()) {
-                if (record.getOverallStatus() == ComparisonStatus.MISMATCH) {
+                if (record.isAffectsResult() && record.getOverallStatus() == ComparisonStatus.MISMATCH) {
                     diffCount++;
                 }
+                return;
+            }
+            if (!record.isAffectsResult()) {
                 return;
             }
             diffCount += parsedDiffTypes.size();

@@ -1,5 +1,6 @@
 package com.example.dbcompare.domain.model;
 
+import com.example.dbcompare.domain.enums.DiffGroup;
 import com.example.dbcompare.domain.enums.DiffType;
 
 public class DiffRecord {
@@ -11,6 +12,7 @@ public class DiffRecord {
     private String targetLineageTableSchemaName;
     private String targetLineageTableName;
     private String columnName;
+    private DiffGroup diffGroup = DiffGroup.MAIN;
     private DiffType diffType;
     private String sourceValue;
     private String targetValue;
@@ -36,6 +38,8 @@ public class DiffRecord {
     public void setTargetLineageTableName(String targetLineageTableName) { this.targetLineageTableName = targetLineageTableName; }
     public String getColumnName() { return columnName; }
     public void setColumnName(String columnName) { this.columnName = columnName; }
+    public DiffGroup getDiffGroup() { return diffGroup; }
+    public void setDiffGroup(DiffGroup diffGroup) { this.diffGroup = diffGroup == null ? DiffGroup.MAIN : diffGroup; }
     public DiffType getDiffType() { return diffType; }
     public void setDiffType(DiffType diffType) { this.diffType = diffType; }
     public String getSourceValue() { return sourceValue; }
@@ -44,4 +48,5 @@ public class DiffRecord {
     public void setTargetValue(String targetValue) { this.targetValue = targetValue; }
     public String getMessage() { return message; }
     public void setMessage(String message) { this.message = message; }
+    public boolean isAffectsResult() { return diffGroup == DiffGroup.MAIN; }
 }

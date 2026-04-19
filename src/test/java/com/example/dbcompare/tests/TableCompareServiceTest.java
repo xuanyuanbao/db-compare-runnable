@@ -1,7 +1,9 @@
 package com.example.dbcompare.tests;
 
 import com.example.dbcompare.domain.enums.ComparisonStatus;
+import com.example.dbcompare.domain.enums.CompareRelationMode;
 import com.example.dbcompare.domain.enums.DatabaseType;
+import com.example.dbcompare.domain.enums.DiffGroup;
 import com.example.dbcompare.domain.enums.DiffType;
 import com.example.dbcompare.domain.model.ColumnComparisonRecord;
 import com.example.dbcompare.domain.model.ColumnMeta;
@@ -25,6 +27,8 @@ public final class TableCompareServiceTest {
         sourceInfo.setType(DatabaseType.AS400);
 
         CompareOptions options = new CompareOptions();
+        options.setCompareDefaultValue(true);
+        options.setCompareNullable(true);
         TableMeta sourceTable = new TableMeta("USER_INFO");
         TableMeta targetTable = new TableMeta("USER_INFO");
 
@@ -64,6 +68,31 @@ public final class TableCompareServiceTest {
         TestSupport.assertEquals(1, missingTarget.size(), "missing target table should short-circuit to one diff");
         TestSupport.assertEquals(DiffType.TARGET_TABLE_NOT_FOUND, missingTarget.get(0).getDiffType(),
                 "missing target table should use the expected diff type");
+
+        CompareOptions viewOptions = new CompareOptions();
+        viewOptions.setRelationMode(CompareRelationMode.TABLE_TO_VIEW);
+        viewOptions.putTypeMapping("DATE", List.of("TIMESTAMP"));
+
+        TableMeta sourceBusinessTable = new TableMeta("ORDER_INFO");
+        sourceBusinessTable.getColumns().put("ID", column("ID", "INTEGER", "10", "NO", null));
+        sourceBusinessTable.getColumns().put("CREATED_AT", column("CREATED_AT", "DATE", "10", "NO", null));
+        sourceBusinessTable.getColumns().put("LEGACY_ONLY", column("LEGACY_ONLY", "VARCHAR", "20", "YES", null));
+
+        TableMeta targetView = new TableMeta("ORDER_VIEW");
+        targetView.getColumns().put("ID", column("ID", "INTEGER", "10", "NO", null));
+        targetView.getColumns().put("CREATED_AT", column("CREATED_AT", "TIMESTAMP", "10", "NO", null));
+
+        TableComparisonResult viewComparison = service.compareDetailed(sourceInfo, "LEGACY_A", sourceBusinessTable, "VIEW_APP", targetView, viewOptions);
+        TestSupport.assertEquals(0, viewComparison.getMainDiffs().size(),
+                "custom type mapping should prevent a view compare from reporting main diffs");
+        TestSupport.assertEquals(1, viewComparison.getInfoDiffs().size(),
+                "table-only columns should be emitted as info diffs in table-to-view mode");
+        TestSupport.assertEquals(DiffType.VIEW_MISSING_COLUMN_INFO, viewComparison.getInfoDiffs().get(0).getDiffType(),
+                "table-only columns should use the dedicated info diff type");
+        TestSupport.assertEquals(DiffGroup.INFO, recordOf(viewComparison.getColumnRecords(), "LEGACY_ONLY").getDiffGroup(),
+                "table-only column rows should be marked as info diff rows");
+        TestSupport.assertEquals(ComparisonStatus.MATCH, recordOf(viewComparison.getColumnRecords(), "LEGACY_ONLY").getOverallStatus(),
+                "info-only rows should not be treated as result-affecting mismatches");
     }
 
     private static ColumnMeta column(String name, String type, String length, String nullable, String defaultValue) {
@@ -86,9 +115,14 @@ public final class TableCompareServiceTest {
     }
 
     private static ComparisonStatus statusOf(List<ColumnComparisonRecord> records, String columnName) {
+        ColumnComparisonRecord record = recordOf(records, columnName);
+        return record == null ? null : record.getOverallStatus();
+    }
+
+    private static ColumnComparisonRecord recordOf(List<ColumnComparisonRecord> records, String columnName) {
         for (ColumnComparisonRecord record : records) {
             if (columnName.equals(record.getColumnName())) {
-                return record.getOverallStatus();
+                return record;
             }
         }
         return null;

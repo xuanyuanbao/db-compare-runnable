@@ -3,7 +3,7 @@ package com.example.dbcompare.domain.model;
 import java.nio.file.Path;
 
 public class ManualConfirmationConfig {
-    private boolean enabled = true;
+    private boolean enabled = false;
     private String excelDir;
     private String excelName;
     private String excelPath;

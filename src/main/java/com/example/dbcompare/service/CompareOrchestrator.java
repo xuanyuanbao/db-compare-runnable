@@ -344,7 +344,7 @@ public class CompareOrchestrator {
             return;
         }
         for (ColumnComparisonRecord record : comparisonResult.getColumnRecords()) {
-            if (record.getOverallStatus() == ComparisonStatus.MISMATCH) {
+            if (record.isAffectsResult() && record.getOverallStatus() == ComparisonStatus.MISMATCH) {
                 rows.add(record);
             }
         }
@@ -473,6 +473,9 @@ public class CompareOrchestrator {
     }
 
     private CompareObjectType resolveTargetObjectType(CompareConfig compareConfig) {
+        if (compareConfig.getOptions().getRelationMode() == com.example.dbcompare.domain.enums.CompareRelationMode.TABLE_TO_VIEW) {
+            return CompareObjectType.VIEW;
+        }
         if (compareConfig.getTarget() != null && compareConfig.getTarget().isViewOnly()) {
             return CompareObjectType.VIEW;
         }
