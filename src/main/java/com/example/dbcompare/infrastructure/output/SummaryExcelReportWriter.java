@@ -12,6 +12,7 @@ import org.apache.poi.ss.usermodel.Font;
 import org.apache.poi.ss.usermodel.HorizontalAlignment;
 import org.apache.poi.ss.usermodel.IndexedColors;
 import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.streaming.SXSSFSheet;
 import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 
@@ -61,6 +62,7 @@ public class SummaryExcelReportWriter {
         private final CompareOptions options;
         private final List<ColumnComparisonRecord> detailRecords = new ArrayList<>();
         private final Map<String, TableStats> tableStats = new LinkedHashMap<>();
+        private final CellStyle pageTitleStyle;
         private final CellStyle titleStyle;
         private final CellStyle headerStyle;
         private final CellStyle neutralStyle;
@@ -72,6 +74,7 @@ public class SummaryExcelReportWriter {
             this.path = path;
             this.workbook = workbook;
             this.options = options;
+            this.pageTitleStyle = createPageTitleStyle(workbook);
             this.titleStyle = createTitleStyle(workbook);
             this.headerStyle = createHeaderStyle(workbook);
             this.neutralStyle = createBodyStyle(workbook, IndexedColors.WHITE);
@@ -110,18 +113,18 @@ public class SummaryExcelReportWriter {
 
         private void renderSummarySheet() {
             SXSSFSheet sheet = workbook.createSheet(SUMMARY_SHEET_NAME);
-            setWidth(sheet, 0, 18);
-            setWidth(sheet, 1, 14);
-            setWidth(sheet, 3, 22);
-            setWidth(sheet, 4, 14);
+            configureSummarySheetLayout(sheet);
 
-            writeBlockTitle(sheet, 0, 0, "视图Schema");
-            writeHeaders(sheet, 1, 0, List.of("视图Schema", "视图数量"));
+            writePageTitle(sheet, 0, "数据库结构对比汇总");
+            writeInfoLine(sheet, 1, "统计对象", tableStats.size() + " 张目标对象");
+
+            writeBlockTitle(sheet, 3, 0, "视图Schema");
+            writeHeaders(sheet, 4, 0, List.of("视图Schema", "视图数量"));
             Map<String, Integer> schemaCount = new LinkedHashMap<>();
             for (TableStats stats : tableStats.values()) {
                 schemaCount.merge(stats.targetSchemaName, 1, Integer::sum);
             }
-            int schemaRow = 2;
+            int schemaRow = 5;
             for (Map.Entry<String, Integer> entry : schemaCount.entrySet()) {
                 Row row = row(sheet, schemaRow++);
                 writeCell(row, 0, entry.getKey(), neutralStyle);
@@ -131,8 +134,8 @@ public class SummaryExcelReportWriter {
             writeCell(totalRow, 0, "合计", titleStyle);
             writeCell(totalRow, 1, Integer.toString(tableStats.size()), titleStyle);
 
-            writeBlockTitle(sheet, 0, 3, "指标概况");
-            writeHeaders(sheet, 1, 3, List.of("指标", "值"));
+            writeBlockTitle(sheet, 3, 4, "指标概况");
+            writeHeaders(sheet, 4, 4, List.of("指标", "值"));
             List<String[]> metrics = new ArrayList<>();
             metrics.add(new String[]{"总表数", Integer.toString(tableStats.size())});
             metrics.add(new String[]{"完全存在表数", Integer.toString(countStatus(TableStats::fieldExistenceStatus, "FULL_EXISTS"))});
@@ -145,30 +148,32 @@ public class SummaryExcelReportWriter {
             if (options.isCompareNullable()) {
                 metrics.add(new String[]{"可空性不一致表数", Integer.toString(countStatus(TableStats::nullableStatus, "NULLABLE_MISMATCH"))});
             }
-            int metricRow = 2;
+            int metricRow = 5;
             for (String[] metric : metrics) {
                 Row row = row(sheet, metricRow++);
-                writeCell(row, 3, metric[0], neutralStyle);
-                writeCell(row, 4, metric[1], neutralStyle);
+                writeCell(row, 4, metric[0], neutralStyle);
+                writeCell(row, 5, metric[1], neutralStyle);
             }
 
-            int statusCol = 6;
-            renderStatusBlock(sheet, 0, statusCol, "字段存在状态", List.of("FULL_EXISTS", "NOT_FULL_EXISTS"), TableStats::fieldExistenceStatus);
-            statusCol += 4;
-            renderStatusBlock(sheet, 0, statusCol, "类型状态", List.of("TYPE_MATCH", "TYPE_MISMATCH"), TableStats::typeStatus);
-            statusCol += 4;
-            renderStatusBlock(sheet, 0, statusCol, "长度状态", List.of("LENGTH_MATCH", "LENGTH_MISMATCH"), TableStats::lengthStatus);
-            statusCol += 4;
-            if (options.isCompareDefaultValue()) {
-                renderStatusBlock(sheet, 0, statusCol, "默认值状态", List.of("DEFAULT_MATCH", "DEFAULT_MISMATCH"), TableStats::defaultStatus);
-                statusCol += 4;
-            }
-            if (options.isCompareNullable()) {
-                renderStatusBlock(sheet, 0, statusCol, "可空状态", List.of("NULLABLE_MATCH", "NULLABLE_MISMATCH"), TableStats::nullableStatus);
-            }
+            int upperBlockStartRow = 3;
+            int riskEndRow = renderStatusBlock(sheet, upperBlockStartRow, 8, "风险等级", List.of("LOW", "MEDIUM", "HIGH"), TableStats::riskLevel);
+            int diffEndRow = renderStatusBlock(sheet, upperBlockStartRow, 12, "差异分类", List.of("FULL_MATCH", "MISSING_COLUMN", "TYPE_MISMATCH", "LENGTH_MISMATCH", "OTHER"), TableStats::diffCategory);
 
-            renderStatusBlock(sheet, 10, 0, "风险等级", List.of("LOW", "MEDIUM", "HIGH"), TableStats::riskLevel);
-            renderStatusBlock(sheet, 10, 5, "差异分类", List.of("FULL_MATCH", "MISSING_COLUMN", "TYPE_MISMATCH", "LENGTH_MISMATCH", "OTHER"), TableStats::diffCategory);
+            int lowerBlockStartRow = Math.max(Math.max(schemaRow, metricRow - 1), Math.max(riskEndRow, diffEndRow)) + 3;
+            int nextRow = renderStatusBlock(sheet, lowerBlockStartRow, 0, "字段存在状态", List.of("FULL_EXISTS", "NOT_FULL_EXISTS"), TableStats::fieldExistenceStatus);
+            nextRow = Math.max(nextRow, renderStatusBlock(sheet, lowerBlockStartRow, 4, "类型状态", List.of("TYPE_MATCH", "TYPE_MISMATCH"), TableStats::typeStatus));
+            nextRow = Math.max(nextRow, renderStatusBlock(sheet, lowerBlockStartRow, 8, "长度状态", List.of("LENGTH_MATCH", "LENGTH_MISMATCH"), TableStats::lengthStatus));
+
+            if (options.isCompareDefaultValue() || options.isCompareNullable()) {
+                int thirdRowStart = nextRow + 2;
+                if (options.isCompareDefaultValue()) {
+                    nextRow = renderStatusBlock(sheet, thirdRowStart, 0, "默认值状态", List.of("DEFAULT_MATCH", "DEFAULT_MISMATCH"), TableStats::defaultStatus);
+                }
+                if (options.isCompareNullable()) {
+                    int nullableStartCol = options.isCompareDefaultValue() ? 4 : 0;
+                    renderStatusBlock(sheet, thirdRowStart, nullableStartCol, "可空状态", List.of("NULLABLE_MATCH", "NULLABLE_MISMATCH"), TableStats::nullableStatus);
+                }
+            }
         }
 
         private void renderTableStatusSheet() {
@@ -271,7 +276,7 @@ public class SummaryExcelReportWriter {
             return values;
         }
 
-        private void renderStatusBlock(SXSSFSheet sheet, int startRow, int startColumn, String title, List<String> statuses, Function<TableStats, String> resolver) {
+        private int renderStatusBlock(SXSSFSheet sheet, int startRow, int startColumn, String title, List<String> statuses, Function<TableStats, String> resolver) {
             writeBlockTitle(sheet, startRow, startColumn, title);
             writeHeaders(sheet, startRow + 1, startColumn, List.of("状态", "表数量", "占比"));
             int total = tableStats.size();
@@ -283,6 +288,7 @@ public class SummaryExcelReportWriter {
                 writeCell(row, startColumn + 1, Integer.toString(count), styleForStatus(status));
                 writeCell(row, startColumn + 2, ratio(count, total), styleForStatus(status));
             }
+            return rowIndex - 1;
         }
 
         private String detailDiffType(ColumnComparisonRecord record) {
@@ -304,6 +310,20 @@ public class SummaryExcelReportWriter {
             Cell cell = row.createCell(columnIndex);
             cell.setCellValue(title);
             cell.setCellStyle(titleStyle);
+        }
+
+        private void writePageTitle(SXSSFSheet sheet, int rowIndex, String title) {
+            Row row = row(sheet, rowIndex);
+            Cell cell = row.createCell(0);
+            cell.setCellValue(title);
+            cell.setCellStyle(pageTitleStyle);
+            sheet.addMergedRegion(new CellRangeAddress(rowIndex, rowIndex, 0, 14));
+        }
+
+        private void writeInfoLine(SXSSFSheet sheet, int rowIndex, String label, String value) {
+            Row row = row(sheet, rowIndex);
+            writeCell(row, 0, label, titleStyle);
+            writeCell(row, 1, value, neutralStyle);
         }
 
         private void writeHeaders(SXSSFSheet sheet, int rowIndex, int startColumn, List<String> headers) {
@@ -345,6 +365,25 @@ public class SummaryExcelReportWriter {
             sheet.setColumnWidth(columnIndex, widthChars * 256);
         }
 
+        private void configureSummarySheetLayout(SXSSFSheet sheet) {
+            setWidth(sheet, 0, 20);
+            setWidth(sheet, 1, 12);
+            setWidth(sheet, 2, 3);
+            setWidth(sheet, 3, 3);
+            setWidth(sheet, 4, 20);
+            setWidth(sheet, 5, 12);
+            setWidth(sheet, 6, 3);
+            setWidth(sheet, 7, 3);
+            setWidth(sheet, 8, 16);
+            setWidth(sheet, 9, 12);
+            setWidth(sheet, 10, 12);
+            setWidth(sheet, 11, 3);
+            setWidth(sheet, 12, 16);
+            setWidth(sheet, 13, 12);
+            setWidth(sheet, 14, 12);
+            sheet.createFreezePane(0, 3);
+        }
+
         private String ratio(int count, int total) {
             if (total <= 0) {
                 return "0.00%";
@@ -374,6 +413,26 @@ public class SummaryExcelReportWriter {
             style.setFont(font);
             style.setFillForegroundColor(IndexedColors.LIGHT_CORNFLOWER_BLUE.getIndex());
             style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+            style.setBorderBottom(BorderStyle.THIN);
+            style.setBorderTop(BorderStyle.THIN);
+            style.setBorderLeft(BorderStyle.THIN);
+            style.setBorderRight(BorderStyle.THIN);
+            return style;
+        }
+
+        private CellStyle createPageTitleStyle(SXSSFWorkbook workbook) {
+            CellStyle style = workbook.createCellStyle();
+            Font font = workbook.createFont();
+            font.setBold(true);
+            font.setFontHeightInPoints((short) 14);
+            style.setFont(font);
+            style.setAlignment(HorizontalAlignment.CENTER);
+            style.setFillForegroundColor(IndexedColors.PALE_BLUE.getIndex());
+            style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+            style.setBorderBottom(BorderStyle.THIN);
+            style.setBorderTop(BorderStyle.THIN);
+            style.setBorderLeft(BorderStyle.THIN);
+            style.setBorderRight(BorderStyle.THIN);
             return style;
         }
 
