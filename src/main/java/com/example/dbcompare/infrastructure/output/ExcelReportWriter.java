@@ -219,21 +219,20 @@ public class ExcelReportWriter {
 
         private void createTypeRuleSheet() {
             SXSSFSheet ruleSheet = workbook.createSheet(TYPE_RULE_SHEET_NAME);
-            List<String> headers = List.of("AS400原始类型", "Gauss原始类型", "比较归一类型", "判等说明");
+            List<String> headers = List.of("原始类型集合", "比较归一类型", "判等说明");
             Row header = ruleSheet.createRow(0);
             for (int index = 0; index < headers.size(); index++) {
                 Cell cell = header.createCell(index);
                 cell.setCellValue(headers.get(index));
                 cell.setCellStyle(headerStyle);
-                ruleSheet.setColumnWidth(index, (index == 3 ? 36 : 24) * 256);
+                ruleSheet.setColumnWidth(index, (index == 2 ? 44 : 28) * 256);
             }
             int ruleRowIndex = 1;
-            for (TypeNormalizer.TypeEqualityRule rule : typeNormalizer.describeAs400GaussRules(options.getTypeMappings())) {
+            for (TypeNormalizer.TypeEqualityRule rule : typeNormalizer.describeTypeEqualityRules(options.getTypeMappings())) {
                 Row row = ruleSheet.createRow(ruleRowIndex++);
-                row.createCell(0).setCellValue(rule.as400Types());
-                row.createCell(1).setCellValue(rule.gaussTypes());
-                row.createCell(2).setCellValue(rule.comparableType());
-                row.createCell(3).setCellValue(rule.description());
+                row.createCell(0).setCellValue(rule.rawTypes());
+                row.createCell(1).setCellValue(rule.comparableType());
+                row.createCell(2).setCellValue(rule.description());
             }
             ruleSheet.createFreezePane(0, 1);
             if (ruleRowIndex > 1) {

@@ -161,15 +161,14 @@ Gradle 已内置常用 JDBC 驱动：
 明细工作簿还会额外生成一个规则 sheet：
 - `类型判等规则`
 
-该 sheet 用来展示当前 AS400 和 Gauss 的类型判等原则：
-- `AS400原始类型`
-- `Gauss原始类型`
+该 sheet 用来展示当前生效的类型判等原则：
+- `原始类型集合`
 - `比较归一类型`
 - `判等说明`
 
 这样你可以同时看到：
 - 明细里字段本身的原始类型
-- 系统判定“一致/不一致”时采用的映射规则
+- 系统判定“一致/不一致”时采用的当前生效规则
 
 类型判等规则现在默认来自：
 - [type-equality-rules.properties](D:/develop/java_develop/temp/db-compare-runnable/src/main/resources/type-equality-rules.properties)

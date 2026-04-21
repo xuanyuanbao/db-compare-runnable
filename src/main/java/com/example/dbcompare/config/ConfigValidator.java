@@ -15,9 +15,15 @@ public class ConfigValidator {
     private final TypeRuleFileLoader typeRuleFileLoader = new TypeRuleFileLoader();
 
     public void validate(CompareConfig config) {
-        if (config == null) throw new IllegalArgumentException("Compare config must not be null");
-        if (config.getSources().isEmpty()) throw new IllegalArgumentException("At least one source datasource is required");
-        if (config.getTarget() == null) throw new IllegalArgumentException("Target datasource is required");
+        if (config == null) {
+            throw new IllegalArgumentException("Compare config must not be null");
+        }
+        if (config.getSources().isEmpty()) {
+            throw new IllegalArgumentException("At least one source datasource is required");
+        }
+        if (config.getTarget() == null) {
+            throw new IllegalArgumentException("Target datasource is required");
+        }
         if (!typeRuleFileLoader.exists(config.getOptions().getTypeRuleFile())) {
             throw new IllegalArgumentException("Type rule file not found or unreadable: " + config.getOptions().getTypeRuleFile());
         }
@@ -45,9 +51,15 @@ public class ConfigValidator {
     }
 
     private void validateDataSource(DataSourceInfo dataSourceInfo, boolean isSource) {
-        if (dataSourceInfo == null) throw new IllegalArgumentException("Datasource must not be null");
-        if (isBlank(dataSourceInfo.getSourceName())) throw new IllegalArgumentException("Datasource name must not be blank");
-        if (dataSourceInfo.getType() == null) throw new IllegalArgumentException("Datasource type must not be null: " + dataSourceInfo.getSourceName());
+        if (dataSourceInfo == null) {
+            throw new IllegalArgumentException("Datasource must not be null");
+        }
+        if (isBlank(dataSourceInfo.getSourceName())) {
+            throw new IllegalArgumentException("Datasource name must not be blank");
+        }
+        if (dataSourceInfo.getType() == null) {
+            throw new IllegalArgumentException("Datasource type must not be null: " + dataSourceInfo.getSourceName());
+        }
         if (isSource && dataSourceInfo.getType() == DatabaseType.GAUSS) {
             throw new IllegalArgumentException("Source datasource cannot be GAUSS: " + dataSourceInfo.getSourceName());
         }
@@ -81,17 +93,17 @@ public class ConfigValidator {
         }
         Path path = Path.of(resolvedExcelPath);
         if (!Files.exists(path)) {
-            throw new IllegalArgumentException("人工确认融合功能已开启，但测试组Excel文件不存在: " + path.toAbsolutePath());
+            throw new IllegalArgumentException("人工确认融合功能已开启，但测试组 Excel 文件不存在: " + path.toAbsolutePath());
         }
         if (!Files.isRegularFile(path)) {
-            throw new IllegalArgumentException("人工确认融合功能已开启，但测试组Excel路径不是文件: " + path.toAbsolutePath());
+            throw new IllegalArgumentException("人工确认融合功能已开启，但测试组 Excel 路径不是文件: " + path.toAbsolutePath());
         }
         if (!Files.isReadable(path)) {
-            throw new IllegalArgumentException("人工确认融合功能已开启，但测试组Excel文件不可读: " + path.toAbsolutePath());
+            throw new IllegalArgumentException("人工确认融合功能已开启，但测试组 Excel 文件不可读: " + path.toAbsolutePath());
         }
         String fileName = path.getFileName() == null ? "" : path.getFileName().toString().toLowerCase();
         if (!(fileName.endsWith(".xlsx") || fileName.endsWith(".xls"))) {
-            throw new IllegalArgumentException("人工确认融合功能已开启，但指定文件不是合法Excel文件: " + path.toAbsolutePath());
+            throw new IllegalArgumentException("人工确认融合功能已开启，但指定文件不是合法 Excel 文件: " + path.toAbsolutePath());
         }
     }
 }

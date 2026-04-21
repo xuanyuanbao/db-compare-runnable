@@ -10,22 +10,13 @@ import java.util.Map;
 import java.util.Set;
 
 public class TypeNormalizer {
-    private static final List<String> AS400_RULE_SEEDS = List.of(
-            "CHAR", "CHARACTER", "GRAPHIC", "VARCHAR", "CHARACTER VARYING", "VARGRAPHIC",
-            "SMALLINT", "INTEGER", "BIGINT", "DECIMAL", "NUMERIC", "DATE", "TIMESTAMP", "INT", "NUMBER"
-    );
-    private static final List<String> GAUSS_RULE_SEEDS = List.of(
-            "CHAR", "CHARACTER", "VARCHAR", "CHARACTER VARYING", "SMALLINT", "INTEGER", "INT4", "BIGINT",
-            "DECIMAL", "NUMERIC", "NUMBER", "DATE", "TIMESTAMP", "INT"
-    );
-
     private final Map<DatabaseType, TypeNormalizationRule> rules = new EnumMap<>(DatabaseType.class);
 
     public TypeNormalizer() {
         TypeNormalizationRule identity = TypeNormalizationRule.identity();
-        rules.put(DatabaseType.AS400, new As400TypeNormalizationRule());
+        rules.put(DatabaseType.AS400, identity);
         rules.put(DatabaseType.DB2, identity);
-        rules.put(DatabaseType.GAUSS, new GaussTypeNormalizationRule());
+        rules.put(DatabaseType.GAUSS, identity);
         rules.put(DatabaseType.SNAPSHOT, identity);
     }
 
@@ -48,16 +39,7 @@ public class TypeNormalizer {
             return null;
         }
         String type = rawType.trim().toUpperCase();
-        if ("CHARACTER VARYING".equals(type)) {
-            return "VARCHAR";
-        }
-        if ("CHARACTER".equals(type)) {
-            return "CHAR";
-        }
-        if ("DECIMAL".equals(type)) {
-            return "NUMERIC";
-        }
-        return type;
+        return type.isEmpty() ? null : type;
     }
 
     private String normalizeCustomMappings(String normalizedType, Map<String, List<String>> customTypeMappings) {
@@ -71,6 +53,9 @@ public class TypeNormalizer {
                 continue;
             }
             aliasToCanonical.put(canonical, canonical);
+            if (entry.getValue() == null) {
+                continue;
+            }
             for (String alias : entry.getValue()) {
                 String normalizedAlias = normalizeCommon(alias);
                 if (normalizedAlias != null) {
@@ -81,47 +66,35 @@ public class TypeNormalizer {
         return aliasToCanonical.getOrDefault(normalizedType, normalizedType);
     }
 
-    public List<TypeEqualityRule> describeAs400GaussRules(Map<String, List<String>> customTypeMappings) {
-        Map<String, Set<String>> as400Groups = collectGroups(DatabaseType.AS400, AS400_RULE_SEEDS, customTypeMappings);
-        Map<String, Set<String>> gaussGroups = collectGroups(DatabaseType.GAUSS, GAUSS_RULE_SEEDS, customTypeMappings);
+    public List<TypeEqualityRule> describeTypeEqualityRules(Map<String, List<String>> customTypeMappings) {
         List<TypeEqualityRule> rules = new java.util.ArrayList<>();
-        LinkedHashSet<String> canonicalTypes = new LinkedHashSet<>();
-        canonicalTypes.addAll(as400Groups.keySet());
-        canonicalTypes.addAll(gaussGroups.keySet());
-        for (String canonicalType : canonicalTypes) {
-            Set<String> as400Types = as400Groups.get(canonicalType);
-            Set<String> gaussTypes = gaussGroups.get(canonicalType);
-            if (as400Types == null || as400Types.isEmpty() || gaussTypes == null || gaussTypes.isEmpty()) {
+        if (customTypeMappings == null || customTypeMappings.isEmpty()) {
+            return rules;
+        }
+        for (Map.Entry<String, List<String>> entry : customTypeMappings.entrySet()) {
+            String canonicalType = normalizeCommon(entry.getKey());
+            if (canonicalType == null) {
                 continue;
             }
+            LinkedHashSet<String> rawTypes = new LinkedHashSet<>();
+            rawTypes.add(canonicalType);
+            if (entry.getValue() != null) {
+                for (String alias : entry.getValue()) {
+                    String normalizedAlias = normalizeCommon(alias);
+                    if (normalizedAlias != null) {
+                        rawTypes.add(normalizedAlias);
+                    }
+                }
+            }
             rules.add(new TypeEqualityRule(
-                    join(as400Types),
-                    join(gaussTypes),
+                    String.join(", ", rawTypes),
                     canonicalType,
-                    "AS400 与 Gauss 类型在归一到 " + canonicalType + " 后判定为一致"
+                    "以下原始类型在比较时会归一到 " + canonicalType + " 后判定为一致"
             ));
         }
         return rules;
     }
 
-    private Map<String, Set<String>> collectGroups(DatabaseType databaseType,
-                                                   List<String> rawTypes,
-                                                   Map<String, List<String>> customTypeMappings) {
-        Map<String, Set<String>> groups = new LinkedHashMap<>();
-        for (String rawType : rawTypes) {
-            String canonicalType = normalize(databaseType, rawType, customTypeMappings);
-            if (canonicalType == null) {
-                continue;
-            }
-            groups.computeIfAbsent(canonicalType, ignored -> new LinkedHashSet<>()).add(rawType);
-        }
-        return groups;
-    }
-
-    private String join(Set<String> values) {
-        return String.join(", ", values);
-    }
-
-    public record TypeEqualityRule(String as400Types, String gaussTypes, String comparableType, String description) {
+    public record TypeEqualityRule(String rawTypes, String comparableType, String description) {
     }
 }

@@ -42,7 +42,7 @@ class ExcelReportWriterTest {
     }
 
     @Test
-    void writesRawDatabaseMetadataValuesAndAddsTypeRuleSheet(@TempDir Path tempDir) throws Exception {
+    void writesRawDatabaseMetadataValuesAndAddsDynamicTypeRuleSheet(@TempDir Path tempDir) throws Exception {
         Path output = tempDir.resolve("detail-raw.xlsx");
         CompareOptions options = new CompareOptions();
         options.putTypeMapping("DATE", List.of("TIMESTAMP"));
@@ -67,9 +67,11 @@ class ExcelReportWriterTest {
             assertEquals("VARCHAR", workbook.getSheetAt(0).getRow(1).getCell(9).getStringCellValue());
             assertEquals("16 OCTETS", workbook.getSheetAt(0).getRow(1).getCell(11).getStringCellValue());
             assertEquals("60", workbook.getSheetAt(0).getRow(1).getCell(12).getStringCellValue());
-            assertEquals("AS400原始类型", workbook.getSheet("类型判等规则").getRow(0).getCell(0).getStringCellValue());
-            assertEquals("Gauss原始类型", workbook.getSheet("类型判等规则").getRow(0).getCell(1).getStringCellValue());
-            assertEquals("比较归一类型", workbook.getSheet("类型判等规则").getRow(0).getCell(2).getStringCellValue());
+            assertEquals("原始类型集合", workbook.getSheet("类型判等规则").getRow(0).getCell(0).getStringCellValue());
+            assertEquals("比较归一类型", workbook.getSheet("类型判等规则").getRow(0).getCell(1).getStringCellValue());
+            assertEquals("判等说明", workbook.getSheet("类型判等规则").getRow(0).getCell(2).getStringCellValue());
+            assertEquals("DATE, TIMESTAMP", workbook.getSheet("类型判等规则").getRow(1).getCell(0).getStringCellValue());
+            assertEquals("DATE", workbook.getSheet("类型判等规则").getRow(1).getCell(1).getStringCellValue());
         }
     }
 
