@@ -93,6 +93,8 @@ Gradle 已内置常用 JDBC 驱动：
   - 控制“类型不一致”是否影响最终结果
 - `dbcompare.options.length-mismatch-affect-result`
   - 控制“长度不一致”是否影响最终结果
+- `dbcompare.options.length-target-longer-affect-result`
+  - 控制“目标长度更长”的字符类型长度差异是否影响最终结果
 - `dbcompare.options.default-mismatch-affect-result`
   - 控制“默认值不一致”是否影响最终结果
 - `dbcompare.options.nullable-mismatch-affect-result`
@@ -190,6 +192,7 @@ Gradle 已内置常用 JDBC 驱动：
 同样的规则也适用于属性类差异：
 - `dbcompare.options.type-mismatch-affect-result`
 - `dbcompare.options.length-mismatch-affect-result`
+- `dbcompare.options.length-target-longer-affect-result`
 - `dbcompare.options.default-mismatch-affect-result`
 - `dbcompare.options.nullable-mismatch-affect-result`
 
@@ -197,6 +200,19 @@ Gradle 已内置常用 JDBC 驱动：
 - 继续参与比对和明细输出
 - 但可以按需降级为信息差异
 - 降级后不影响 `diffCount`、表级状态、风险等级和汇总统计
+
+其中 `dbcompare.options.length-target-longer-affect-result` 是长度差异的特例开关：
+- 第一版只对字符类型生效
+  - `CHAR`
+  - `VARCHAR`
+  - `CHARACTER`
+  - `CHARACTER VARYING`
+  - `GRAPHIC`
+  - `VARGRAPHIC`
+- 当目标长度大于源长度时：
+  - `true`：仍按主差异处理
+  - `false`：降级为信息差异
+- 数值类型、时间类型和精度/小数位场景不走这个开关
 
 `表级状态` sheet 输出表级汇总结果，字段包括：
 - `源数据库`

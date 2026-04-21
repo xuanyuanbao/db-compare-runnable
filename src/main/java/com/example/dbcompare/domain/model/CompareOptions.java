@@ -17,6 +17,7 @@ public class CompareOptions {
     private boolean sourceColumnMissingInTargetAffectResult = false;
     private boolean typeMismatchAffectResult = true;
     private boolean lengthMismatchAffectResult = true;
+    private boolean lengthTargetLongerAffectResult = false;
     private boolean defaultMismatchAffectResult = true;
     private boolean nullableMismatchAffectResult = true;
     private int sourceLoadThreads = 4;
@@ -45,6 +46,10 @@ public class CompareOptions {
     public boolean isLengthMismatchAffectResult() { return lengthMismatchAffectResult; }
     public void setLengthMismatchAffectResult(boolean lengthMismatchAffectResult) {
         this.lengthMismatchAffectResult = lengthMismatchAffectResult;
+    }
+    public boolean isLengthTargetLongerAffectResult() { return lengthTargetLongerAffectResult; }
+    public void setLengthTargetLongerAffectResult(boolean lengthTargetLongerAffectResult) {
+        this.lengthTargetLongerAffectResult = lengthTargetLongerAffectResult;
     }
     public boolean isDefaultMismatchAffectResult() { return defaultMismatchAffectResult; }
     public void setDefaultMismatchAffectResult(boolean defaultMismatchAffectResult) {

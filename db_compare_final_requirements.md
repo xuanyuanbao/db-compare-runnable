@@ -37,6 +37,7 @@ compare-options:
   source-column-missing-in-target-affect-result: false
   type-mismatch-affect-result: true
   length-mismatch-affect-result: true
+  length-target-longer-affect-result: false
   default-mismatch-affect-result: true
   nullable-mismatch-affect-result: true
 
@@ -73,6 +74,7 @@ compare-options:
   source-column-missing-in-target-affect-result: true | false
   type-mismatch-affect-result: true | false
   length-mismatch-affect-result: true | false
+  length-target-longer-affect-result: true | false
   default-mismatch-affect-result: true | false
   nullable-mismatch-affect-result: true | false
 
@@ -92,6 +94,39 @@ compare-options:
 - 源对象可以是 source table，也可以是 source view
 - 目标对象可以是 target table，也可以是 target view
 
+### 长度差异特例开关（新增需求）
+当发生“长度不一致”时，如果只是：
+- 源长度 < 目标长度
+- 也就是目标字段长度更长、理论上更宽松
+
+则允许通过单独开关控制这类差异是否影响全局结果：
+
+compare-options:
+  length-target-longer-affect-result: true | false
+
+规则如下：
+- `true`
+  - 即使目标长度更长，仍按主差异处理
+  - 影响表级状态、diffCount、风险等级、汇总统计
+- `false`
+  - 目标长度更长的场景按信息差异处理
+  - 仍保留长度不一致明细
+  - 不影响表级状态、diffCount、风险等级、汇总统计
+
+补充说明：
+- 该开关只作用于“长度不一致”里的子场景：`targetLength > sourceLength`
+- 第一版只作用于字符类型：
+  - `CHAR`
+  - `VARCHAR`
+  - `CHARACTER`
+  - `CHARACTER VARYING`
+  - `GRAPHIC`
+  - `VARGRAPHIC`
+- 如果是 `targetLength < sourceLength`，仍按普通长度不一致规则处理
+- 数值类型、时间类型、精度/小数位场景不走这个开关
+- 该开关优先级高于普通长度差异结果判定，用于细化 `length-mismatch-affect-result`
+- 前提是 `check-length=true`
+
 ---
 
 ## 七、关键原则
@@ -101,6 +136,7 @@ compare-options:
 | view字段缺失 | ✅ | ✅ |
 | 类型不一致 | ✅ | 由开关控制 |
 | 长度不一致 | ✅ | 由开关控制 |
+| 目标长度更长 | ✅ | 由专门开关控制 |
 | 默认值不一致 | 按配置启用 | 由开关控制 |
 | 可空不一致 | 按配置启用 | 由开关控制 |
 | 源有目标无字段 | ✅ | 由开关控制 |
@@ -130,6 +166,7 @@ view-batch:
 | MISSING_COLUMN | 是 |
 | TYPE_MISMATCH | 由开关控制 |
 | LENGTH_MISMATCH | 由开关控制 |
+| LENGTH_MISMATCH(target longer) | 由专门开关控制 |
 | DEFAULT_MISMATCH | 由开关控制 |
 | NULLABLE_MISMATCH | 由开关控制 |
 | SOURCE_COLUMN_MISSING_IN_TARGET | 由开关控制 |
@@ -155,6 +192,7 @@ compare-options:
   source-column-missing-in-target-affect-result: false
   type-mismatch-affect-result: true
   length-mismatch-affect-result: true
+  length-target-longer-affect-result: false
   default-mismatch-affect-result: true
   nullable-mismatch-affect-result: true
 
@@ -166,6 +204,10 @@ compare-options:
 - 当 `type-mismatch-affect-result=false`、`length-mismatch-affect-result=false`、
   `default-mismatch-affect-result=false` 或 `nullable-mismatch-affect-result=false` 时，
   对应属性差异继续展示，但按信息类差异处理
+- 当 `length-target-longer-affect-result=false` 时，
+  “目标长度更长”的长度差异按信息类差异处理
+- 当 `length-target-longer-affect-result=true` 时，
+  “目标长度更长”的长度差异仍按主差异处理
 
 ---
 
@@ -176,6 +218,7 @@ compare-options:
 - 主差异与信息差异分离
 - “源有目标无字段”支持开关控制是否影响全局结果
 - “类型 / 长度 / 默认值 / 可空”支持独立开关控制是否影响全局结果
+- “目标长度更长”支持单独开关控制是否影响全局结果
 - 性能提升明显
 
 ---

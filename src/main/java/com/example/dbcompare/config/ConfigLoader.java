@@ -85,6 +85,11 @@ public class ConfigLoader {
                         "compare.options.lengthMismatchAffectResult",
                         "compare.options.length-mismatch-affect-result"),
                 true));
+        config.getOptions().setLengthTargetLongerAffectResult(boolValue(properties,
+                firstPresentKey(properties,
+                        "compare.options.lengthTargetLongerAffectResult",
+                        "compare.options.length-target-longer-affect-result"),
+                false));
         config.getOptions().setDefaultMismatchAffectResult(boolValue(properties,
                 firstPresentKey(properties,
                         "compare.options.defaultMismatchAffectResult",

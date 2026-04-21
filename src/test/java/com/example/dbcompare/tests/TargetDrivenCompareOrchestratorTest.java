@@ -55,6 +55,7 @@ class TargetDrivenCompareOrchestratorTest {
         target.setViewOnly(true);
         config.setTarget(target);
         config.getOptions().setObjectType(CompareObjectType.VIEW);
+        config.getOptions().setLengthTargetLongerAffectResult(true);
         config.getReport().getManualConfirmation().setEnabled(false);
 
         SchemaMapping schemaMapping = new SchemaMapping();

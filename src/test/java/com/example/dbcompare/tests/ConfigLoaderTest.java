@@ -52,6 +52,7 @@ public final class ConfigLoaderTest {
         properties.setProperty("compare.options.source-column-missing-in-target-affect-result", "true");
         properties.setProperty("compare.options.type-mismatch-affect-result", "false");
         properties.setProperty("compare.options.length-mismatch-affect-result", "false");
+        properties.setProperty("compare.options.length-target-longer-affect-result", "true");
         properties.setProperty("compare.options.default-mismatch-affect-result", "false");
         properties.setProperty("compare.options.nullable-mismatch-affect-result", "false");
         properties.setProperty("compare.options.relationMode", "table_to_view");
@@ -107,6 +108,8 @@ public final class ConfigLoaderTest {
                 "type-mismatch-affect-result should be loaded from config");
         TestSupport.assertTrue(!config.getOptions().isLengthMismatchAffectResult(),
                 "length-mismatch-affect-result should be loaded from config");
+        TestSupport.assertTrue(config.getOptions().isLengthTargetLongerAffectResult(),
+                "length-target-longer-affect-result should be loaded from config");
         TestSupport.assertTrue(!config.getOptions().isDefaultMismatchAffectResult(),
                 "default-mismatch-affect-result should be loaded from config");
         TestSupport.assertTrue(!config.getOptions().isNullableMismatchAffectResult(),

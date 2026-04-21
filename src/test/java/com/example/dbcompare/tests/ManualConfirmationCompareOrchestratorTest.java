@@ -86,6 +86,7 @@ class ManualConfirmationCompareOrchestratorTest {
         target.setViewLineageFile(lineageCsv.toString());
         config.setTarget(target);
         config.getOptions().setObjectType(CompareObjectType.VIEW);
+        config.getOptions().setLengthTargetLongerAffectResult(true);
         config.getReport().getManualConfirmation().setEnabled(true);
         config.getReport().getManualConfirmation().setExcelPath(manualWorkbook.toString());
         config.getOutput().setManualConfirmationExcelPath(tempDir.resolve("merged.xlsx").toString());

@@ -16,11 +16,17 @@ import com.example.dbcompare.util.DefaultValueNormalizer;
 import com.example.dbcompare.util.TypeNormalizer;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 public class TableCompareService {
     private static final String MATCH_MESSAGE = "MATCH";
+    private static final Set<String> TARGET_LONGER_IGNORABLE_LENGTH_TYPES = new HashSet<>(Arrays.asList(
+            "CHAR", "VARCHAR", "GRAPHIC", "VARGRAPHIC"
+    ));
 
     private final TypeNormalizer typeNormalizer = new TypeNormalizer();
 
@@ -226,7 +232,8 @@ public class TableCompareService {
         String targetLength = normalizeLength(targetColumn.getLength());
         record.setSourceLength(sourceLength);
         record.setTargetLength(targetLength);
-        applyOptionalAttributeComparison(record::setLengthStatus, options.isCompareLength(), options.isLengthMismatchAffectResult(),
+        boolean lengthAffectsResult = resolveLengthMismatchAffectResult(options, sourceColumn, targetColumn, sourceType, targetType, sourceLength, targetLength);
+        applyOptionalAttributeComparison(record::setLengthStatus, options.isCompareLength(), lengthAffectsResult,
                 Objects.equals(sourceLength, targetLength), DiffType.COLUMN_LENGTH_MISMATCH, "Length mismatch", accumulator, result,
                 sourceInfo, sourceSchema, sourceTableName, targetSchema, targetTableName, columnName,
                 sourceLength, targetLength);
@@ -393,6 +400,71 @@ public class TableCompareService {
 
     private String normalizeType(DatabaseType databaseType, ColumnMeta columnMeta, CompareOptions options) {
         return typeNormalizer.normalize(databaseType, columnMeta.getDataType(), options.getTypeMappings());
+    }
+
+    private boolean resolveLengthMismatchAffectResult(CompareOptions options,
+                                                      ColumnMeta sourceColumn,
+                                                      ColumnMeta targetColumn,
+                                                      String sourceType,
+                                                      String targetType,
+                                                      String sourceLength,
+                                                      String targetLength) {
+        if (!options.isCompareLength()) {
+            return false;
+        }
+        if (!options.isLengthMismatchAffectResult()) {
+            return false;
+        }
+        if (!options.isLengthTargetLongerAffectResult() && isIgnorableTargetLongerLength(sourceColumn, targetColumn, sourceType, targetType, sourceLength, targetLength)) {
+            return false;
+        }
+        return true;
+    }
+
+    private boolean isIgnorableTargetLongerLength(ColumnMeta sourceColumn,
+                                                  ColumnMeta targetColumn,
+                                                  String sourceType,
+                                                  String targetType,
+                                                  String sourceLength,
+                                                  String targetLength) {
+        if (!isTargetLongerLength(sourceLength, targetLength)) {
+            return false;
+        }
+        return isTargetLongerIgnorableType(sourceColumn, sourceType) && isTargetLongerIgnorableType(targetColumn, targetType);
+    }
+
+    private boolean isTargetLongerIgnorableType(ColumnMeta columnMeta, String normalizedType) {
+        if (normalizedType != null && TARGET_LONGER_IGNORABLE_LENGTH_TYPES.contains(normalizedType.trim().toUpperCase())) {
+            return true;
+        }
+        if (columnMeta == null || columnMeta.getDataType() == null) {
+            return false;
+        }
+        String rawType = columnMeta.getDataType().trim().toUpperCase();
+        return "CHARACTER".equals(rawType)
+                || "CHARACTER VARYING".equals(rawType)
+                || TARGET_LONGER_IGNORABLE_LENGTH_TYPES.contains(rawType);
+    }
+
+    private boolean isTargetLongerLength(String sourceLength, String targetLength) {
+        Integer source = parseSingleLength(sourceLength);
+        Integer target = parseSingleLength(targetLength);
+        return source != null && target != null && target > source;
+    }
+
+    private Integer parseSingleLength(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        String normalized = value.trim();
+        if (normalized.contains(",")) {
+            return null;
+        }
+        try {
+            return Integer.parseInt(normalized);
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
     }
 
     private DiffType sourceOnlyTargetMissingDiffType(boolean affectsResult) {

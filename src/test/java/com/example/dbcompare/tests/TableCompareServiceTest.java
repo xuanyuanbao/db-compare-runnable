@@ -171,6 +171,46 @@ public final class TableCompareServiceTest {
                 "mixed rows should stay in the main diff group when at least one mismatch still affects the result");
         TestSupport.assertEquals(ComparisonStatus.MISMATCH, mixedAttributeRecord.getOverallStatus(),
                 "mixed rows should remain mismatches when any enabled attribute mismatch is present");
+
+        CompareOptions targetLongerOptions = new CompareOptions();
+        targetLongerOptions.setLengthMismatchAffectResult(true);
+        targetLongerOptions.setLengthTargetLongerAffectResult(false);
+
+        TableMeta sourceLongerIgnoredTable = new TableMeta("ATTR_TARGET_LONGER");
+        sourceLongerIgnoredTable.getColumns().put("NAME", column("NAME", "CHARACTER", "50", "NO", null));
+
+        TableMeta targetLongerIgnoredTable = new TableMeta("ATTR_TARGET_LONGER");
+        targetLongerIgnoredTable.getColumns().put("NAME", column("NAME", "VARCHAR", "70", "NO", null));
+
+        TableComparisonResult targetLongerIgnoredComparison = service.compareDetailed(sourceInfo, "LEGACY_A", sourceLongerIgnoredTable, "T_AS400_A", targetLongerIgnoredTable, targetLongerOptions);
+        ColumnComparisonRecord targetLongerIgnoredRecord = recordOf(targetLongerIgnoredComparison.getColumnRecords(), "NAME");
+        TestSupport.assertEquals(0, targetLongerIgnoredComparison.getMainDiffs().size(),
+                "target-longer character length mismatches should become info diffs when the dedicated switch is disabled");
+        TestSupport.assertEquals(1, targetLongerIgnoredComparison.getInfoDiffs().size(),
+                "target-longer character length mismatches should still be recorded");
+        TestSupport.assertEquals(DiffGroup.INFO, targetLongerIgnoredRecord.getDiffGroup(),
+                "target-longer character length rows should be downgraded to info diff rows");
+        TestSupport.assertEquals(ComparisonStatus.MATCH, targetLongerIgnoredRecord.getOverallStatus(),
+                "target-longer character length rows should not affect the overall row status when ignored");
+
+        CompareOptions targetLongerNumericOptions = new CompareOptions();
+        targetLongerNumericOptions.setLengthMismatchAffectResult(true);
+        targetLongerNumericOptions.setLengthTargetLongerAffectResult(false);
+
+        TableMeta sourceNumericLengthTable = new TableMeta("ATTR_TARGET_LONGER_NUMERIC");
+        sourceNumericLengthTable.getColumns().put("AMOUNT", column("AMOUNT", "NUMERIC", "10", "NO", null));
+
+        TableMeta targetNumericLengthTable = new TableMeta("ATTR_TARGET_LONGER_NUMERIC");
+        targetNumericLengthTable.getColumns().put("AMOUNT", column("AMOUNT", "NUMERIC", "12", "NO", null));
+
+        TableComparisonResult targetLongerNumericComparison = service.compareDetailed(sourceInfo, "LEGACY_A", sourceNumericLengthTable, "T_AS400_A", targetNumericLengthTable, targetLongerNumericOptions);
+        ColumnComparisonRecord targetLongerNumericRecord = recordOf(targetLongerNumericComparison.getColumnRecords(), "AMOUNT");
+        TestSupport.assertEquals(1, targetLongerNumericComparison.getMainDiffs().size(),
+                "numeric length changes should still remain main diffs when the dedicated character-only switch is disabled");
+        TestSupport.assertEquals(DiffGroup.MAIN, targetLongerNumericRecord.getDiffGroup(),
+                "numeric length rows should remain main diff rows");
+        TestSupport.assertEquals(ComparisonStatus.MISMATCH, targetLongerNumericRecord.getOverallStatus(),
+                "numeric length rows should still affect the overall row status");
     }
 
     private static ColumnMeta column(String name, String type, String length, String nullable, String defaultValue) {
