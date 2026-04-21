@@ -49,6 +49,7 @@ public final class ConfigLoaderTest {
         properties.setProperty("compare.options.compareNullable", "false");
         properties.setProperty("compare.options.compareDefaultValue", "false");
         properties.setProperty("compare.options.compareLength", "true");
+        properties.setProperty("compare.options.source-column-missing-in-target-affect-result", "true");
         properties.setProperty("compare.options.relationMode", "table_to_view");
         properties.setProperty("compare.options.typeMappings.DATE", "DATE,TIMESTAMP");
         properties.setProperty("compare.options.objectType", "view");
@@ -96,6 +97,8 @@ public final class ConfigLoaderTest {
                 "compare nullable option should honor explicit false");
         TestSupport.assertTrue(!config.getOptions().isCompareDefaultValue(),
                 "compare default option should honor explicit false");
+        TestSupport.assertTrue(config.getOptions().isSourceColumnMissingInTargetAffectResult(),
+                "source-column-missing-in-target-affect-result should be loaded from config");
         TestSupport.assertEquals(CompareRelationMode.TABLE_TO_VIEW, config.getOptions().getRelationMode(),
                 "relation mode should be loaded from config");
         TestSupport.assertTrue(config.getOptions().getTypeMappings().get("DATE").contains("TIMESTAMP"),

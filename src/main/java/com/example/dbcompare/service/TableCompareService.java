@@ -100,10 +100,11 @@ public class TableCompareService {
             }
 
             if (targetColumn == null) {
+                boolean affectsResult = options.isSourceColumnMissingInTargetAffectResult();
                 appendMissingColumnDiff(result, sourceInfo, sourceSchema, sourceTable.getTableName(), targetSchema,
                         targetTable.getTableName(), columnName, sourceColumn, null,
-                        true, false, DiffType.COLUMN_MISSING_IN_TARGET, "Column exists only in source",
-                        DiffGroup.MAIN, true, options);
+                        true, false, sourceOnlyTargetMissingDiffType(affectsResult),
+                        sourceOnlyTargetMissingMessage(), sourceOnlyTargetMissingDiffGroup(affectsResult), affectsResult, options);
                 continue;
             }
 
@@ -143,10 +144,11 @@ public class TableCompareService {
             if (targetView.getColumns().containsKey(columnName)) {
                 continue;
             }
+            boolean affectsResult = options.isSourceColumnMissingInTargetAffectResult();
             appendMissingColumnDiff(result, sourceInfo, sourceSchema, sourceTable.getTableName(), targetSchema,
                     targetView.getTableName(), columnName, sourceTable.getColumns().get(columnName), null,
-                    true, false, DiffType.VIEW_MISSING_COLUMN_INFO, "View does not expose source column",
-                    DiffGroup.INFO, false, options);
+                    true, false, sourceOnlyTargetMissingDiffType(affectsResult),
+                    sourceOnlyTargetMissingMessage(), sourceOnlyTargetMissingDiffGroup(affectsResult), affectsResult, options);
         }
     }
 
@@ -408,6 +410,18 @@ public class TableCompareService {
 
     private String normalizeType(DatabaseType databaseType, ColumnMeta columnMeta, CompareOptions options) {
         return typeNormalizer.normalize(databaseType, columnMeta.getDataType(), options.getTypeMappings());
+    }
+
+    private DiffType sourceOnlyTargetMissingDiffType(boolean affectsResult) {
+        return affectsResult ? DiffType.COLUMN_MISSING_IN_TARGET : DiffType.SOURCE_COLUMN_MISSING_IN_TARGET;
+    }
+
+    private DiffGroup sourceOnlyTargetMissingDiffGroup(boolean affectsResult) {
+        return affectsResult ? DiffGroup.MAIN : DiffGroup.INFO;
+    }
+
+    private String sourceOnlyTargetMissingMessage() {
+        return "Source column not present in target object";
     }
 
     private DiffRecord buildTableDiff(String sourceDb, String sourceSchema, String sourceTable, String targetSchema,

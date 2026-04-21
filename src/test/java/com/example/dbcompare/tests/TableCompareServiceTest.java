@@ -29,6 +29,7 @@ public final class TableCompareServiceTest {
         CompareOptions options = new CompareOptions();
         options.setCompareDefaultValue(true);
         options.setCompareNullable(true);
+        options.setSourceColumnMissingInTargetAffectResult(true);
         TableMeta sourceTable = new TableMeta("USER_INFO");
         TableMeta targetTable = new TableMeta("USER_INFO");
 
@@ -93,6 +94,29 @@ public final class TableCompareServiceTest {
                 "table-only column rows should be marked as info diff rows");
         TestSupport.assertEquals(ComparisonStatus.MATCH, recordOf(viewComparison.getColumnRecords(), "LEGACY_ONLY").getOverallStatus(),
                 "info-only rows should not be treated as result-affecting mismatches");
+
+        CompareOptions tableInfoOptions = new CompareOptions();
+        tableInfoOptions.setRelationMode(CompareRelationMode.TABLE_TO_TABLE);
+        tableInfoOptions.setSourceColumnMissingInTargetAffectResult(false);
+
+        TableMeta sourceTableInfo = new TableMeta("USER_INFO_INFO");
+        sourceTableInfo.getColumns().put("ID", column("ID", "INTEGER", "10", "NO", null));
+        sourceTableInfo.getColumns().put("ONLY_SRC", column("ONLY_SRC", "CHARACTER", "10", "NO", null));
+
+        TableMeta targetTableInfo = new TableMeta("USER_INFO_INFO");
+        targetTableInfo.getColumns().put("ID", column("ID", "INTEGER", "10", "NO", null));
+
+        TableComparisonResult tableInfoComparison = service.compareDetailed(sourceInfo, "LEGACY_A", sourceTableInfo, "T_AS400_A", targetTableInfo, tableInfoOptions);
+        TestSupport.assertEquals(0, tableInfoComparison.getMainDiffs().size(),
+                "source-only columns should become info diffs when the affect-result switch is disabled");
+        TestSupport.assertEquals(1, tableInfoComparison.getInfoDiffs().size(),
+                "source-only columns should still be recorded when the affect-result switch is disabled");
+        TestSupport.assertEquals(DiffType.SOURCE_COLUMN_MISSING_IN_TARGET, tableInfoComparison.getInfoDiffs().get(0).getDiffType(),
+                "source-only columns should use the dedicated configurable info diff type");
+        TestSupport.assertEquals(DiffGroup.INFO, recordOf(tableInfoComparison.getColumnRecords(), "ONLY_SRC").getDiffGroup(),
+                "source-only table rows should be downgraded to info diff rows when configured");
+        TestSupport.assertEquals(ComparisonStatus.MATCH, recordOf(tableInfoComparison.getColumnRecords(), "ONLY_SRC").getOverallStatus(),
+                "source-only table rows should not affect the overall status when the switch is disabled");
     }
 
     private static ColumnMeta column(String name, String type, String length, String nullable, String defaultValue) {

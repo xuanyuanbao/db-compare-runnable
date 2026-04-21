@@ -70,6 +70,11 @@ public class ConfigLoader {
         config.getOptions().setCompareNullable(boolValue(properties, "compare.options.compareNullable", false));
         config.getOptions().setCompareDefaultValue(boolValue(properties, "compare.options.compareDefaultValue", false));
         config.getOptions().setCompareLength(boolValue(properties, "compare.options.compareLength", true));
+        config.getOptions().setSourceColumnMissingInTargetAffectResult(boolValue(properties,
+                firstPresentKey(properties,
+                        "compare.options.sourceColumnMissingInTargetAffectResult",
+                        "compare.options.source-column-missing-in-target-affect-result"),
+                false));
         config.getOptions().setSourceLoadThreads(intValue(properties, "compare.options.sourceLoadThreads", 4));
         config.getOptions().setObjectType(enumValue(properties, CompareObjectType.class, CompareObjectType.TABLE,
                 "compare.options.objectType", "compare.options.object-type"));
@@ -161,6 +166,15 @@ public class ConfigLoader {
             }
         }
         return null;
+    }
+
+    private String firstPresentKey(Properties properties, String... keys) {
+        for (String key : keys) {
+            if (properties.containsKey(key)) {
+                return key;
+            }
+        }
+        return keys.length == 0 ? null : keys[0];
     }
 
     private void splitToList(String raw, java.util.List<String> out) {

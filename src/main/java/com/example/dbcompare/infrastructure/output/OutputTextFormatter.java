@@ -49,6 +49,7 @@ final class OutputTextFormatter {
             case TARGET_TABLE_NOT_FOUND -> "目标对象不存在";
             case COLUMN_MISSING_IN_SOURCE -> "源端缺字段";
             case COLUMN_MISSING_IN_TARGET -> "目标端缺字段";
+            case SOURCE_COLUMN_MISSING_IN_TARGET -> "源有目标无字段";
             case VIEW_MISSING_COLUMN_INFO -> "视图未包含源字段";
             case COLUMN_TYPE_MISMATCH -> "字段类型不一致";
             case COLUMN_LENGTH_MISMATCH -> "字段长度不一致";
@@ -129,6 +130,7 @@ final class OutputTextFormatter {
                 .replace("column exists only in source", "字段仅存在于源端")
                 .replace("target column missing", "字段仅存在于源端")
                 .replace("source column missing", "字段仅存在于目标端")
+                .replace("Source column not present in target object", "源字段未在目标对象中出现")
                 .replace("View does not expose source column", "视图未暴露源表字段")
                 .replace("Type mismatch", "类型不一致")
                 .replace("Length mismatch", "长度不一致")

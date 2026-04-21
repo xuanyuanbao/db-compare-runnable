@@ -14,6 +14,7 @@ public class CompareOptions {
     private boolean compareNullable = false;
     private boolean compareDefaultValue = false;
     private boolean compareLength = true;
+    private boolean sourceColumnMissingInTargetAffectResult = false;
     private int sourceLoadThreads = 4;
     private CompareObjectType objectType = CompareObjectType.TABLE;
     private CompareRelationMode relationMode = CompareRelationMode.TABLE_TO_TABLE;
@@ -29,6 +30,10 @@ public class CompareOptions {
     public void setCompareDefaultValue(boolean compareDefaultValue) { this.compareDefaultValue = compareDefaultValue; }
     public boolean isCompareLength() { return compareLength; }
     public void setCompareLength(boolean compareLength) { this.compareLength = compareLength; }
+    public boolean isSourceColumnMissingInTargetAffectResult() { return sourceColumnMissingInTargetAffectResult; }
+    public void setSourceColumnMissingInTargetAffectResult(boolean sourceColumnMissingInTargetAffectResult) {
+        this.sourceColumnMissingInTargetAffectResult = sourceColumnMissingInTargetAffectResult;
+    }
     public int getSourceLoadThreads() { return sourceLoadThreads; }
     public void setSourceLoadThreads(int sourceLoadThreads) { this.sourceLoadThreads = sourceLoadThreads; }
     public CompareObjectType getObjectType() { return objectType; }

@@ -34,6 +34,7 @@ compare-options:
   check-length: true
   check-default: false
   check-nullable: false
+  source-column-missing-in-target-affect-result: false
 
 ---
 
@@ -60,6 +61,29 @@ for each column in table:
     if column not in view:
         标记为 VIEW_MISSING_COLUMN_INFO
 
+### 新增开关逻辑（本次补充）
+当“源库表/视图存在字段，但目标库表/视图不存在该字段”时，
+是否影响全局结果，不再写死，而是由配置项控制：
+
+compare-options:
+  source-column-missing-in-target-affect-result: true | false
+
+规则如下：
+- `true`
+  - 该类差异归入“主差异”
+  - 影响表级状态
+  - 影响最终 diffCount / 风险等级 / 汇总统计
+- `false`
+  - 该类差异归入“信息差异”
+  - 不影响表级状态
+  - 不影响最终 diffCount，只用于提示和补充说明
+
+适用范围：
+- `TABLE_TO_TABLE`
+- `TABLE_TO_VIEW`
+- 源对象可以是 source table，也可以是 source view
+- 目标对象可以是 target table，也可以是 target view
+
 ---
 
 ## 七、关键原则
@@ -69,7 +93,7 @@ for each column in table:
 | view字段缺失 | ✅ | ✅ |
 | 类型不一致 | ✅ | ✅ |
 | 长度不一致 | ✅ | ✅ |
-| table多余字段 | ✅（仅记录） | ❌ |
+| 源有目标无字段 | ✅ | 由开关控制 |
 
 ---
 
@@ -96,7 +120,8 @@ view-batch:
 | MISSING_COLUMN | 是 |
 | TYPE_MISMATCH | 是 |
 | LENGTH_MISMATCH | 是 |
-| VIEW_MISSING_COLUMN_INFO | 否 |
+| SOURCE_COLUMN_MISSING_IN_TARGET | 由开关控制 |
+| VIEW_MISSING_COLUMN_INFO | 否（兼容旧口径时保留） |
 
 ---
 
@@ -115,6 +140,13 @@ view-batch:
 compare-options:
   table-extra-columns-affect-result: false
   table-extra-columns-risk-level: LOW
+  source-column-missing-in-target-affect-result: false
+
+说明：
+- 当 `source-column-missing-in-target-affect-result=false` 时，
+  “源有目标无字段”按信息类差异处理
+- 当 `source-column-missing-in-target-affect-result=true` 时，
+  “源有目标无字段”按主差异处理
 
 ---
 
@@ -123,6 +155,7 @@ compare-options:
 - 支持类型映射
 - 支持批次控制
 - 主差异与信息差异分离
+- “源有目标无字段”支持开关控制是否影响全局结果
 - 性能提升明显
 
 ---

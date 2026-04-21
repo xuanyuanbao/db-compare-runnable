@@ -87,6 +87,8 @@ Gradle 已内置常用 JDBC 驱动：
 - `dbcompare.options.compare-nullable`
 - `dbcompare.options.compare-default-value`
 - `dbcompare.options.compare-length`
+- `dbcompare.options.source-column-missing-in-target-affect-result`
+  - 控制“源有目标无字段”是否影响最终结果
 - `dbcompare.options.type-mappings.*`
   - 自定义类型映射，例如 `date=DATE,TIMESTAMP`
 - `dbcompare.output.csv-path`
@@ -160,6 +162,22 @@ Gradle 已内置常用 JDBC 驱动：
 - 风险等级规则
 - 状态色高亮，方便快速区分一致、一般风险和高风险
 - 中文表头、中文状态值，便于直接交付业务侧查看
+
+当开启：
+- `dbcompare.options.source-column-missing-in-target-affect-result=true`
+
+则“源对象存在字段、目标对象不存在字段”会按主差异处理：
+- 影响 `diffCount`
+- 影响表级状态
+- 影响风险等级和汇总统计
+
+当关闭：
+- `dbcompare.options.source-column-missing-in-target-affect-result=false`
+
+则该类差异只作为信息提示保留：
+- 不影响 `diffCount`
+- 不影响表级状态
+- 明细里仍会保留对应记录，便于人工查看
 
 `表级状态` sheet 输出表级汇总结果，字段包括：
 - `源数据库`
