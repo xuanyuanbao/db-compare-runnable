@@ -3,11 +3,22 @@ package com.example.dbcompare.util;
 import com.example.dbcompare.domain.enums.DatabaseType;
 
 import java.util.EnumMap;
+import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class TypeNormalizer {
+    private static final List<String> AS400_RULE_SEEDS = List.of(
+            "CHAR", "CHARACTER", "GRAPHIC", "VARCHAR", "CHARACTER VARYING", "VARGRAPHIC",
+            "SMALLINT", "INTEGER", "BIGINT", "DECIMAL", "NUMERIC", "DATE", "TIMESTAMP", "INT", "NUMBER"
+    );
+    private static final List<String> GAUSS_RULE_SEEDS = List.of(
+            "CHAR", "CHARACTER", "VARCHAR", "CHARACTER VARYING", "SMALLINT", "INTEGER", "INT4", "BIGINT",
+            "DECIMAL", "NUMERIC", "NUMBER", "DATE", "TIMESTAMP", "INT"
+    );
+
     private final Map<DatabaseType, TypeNormalizationRule> rules = new EnumMap<>(DatabaseType.class);
 
     public TypeNormalizer() {
@@ -62,5 +73,49 @@ public class TypeNormalizer {
             }
         }
         return aliasToCanonical.getOrDefault(normalizedType, normalizedType);
+    }
+
+    public List<TypeEqualityRule> describeAs400GaussRules(Map<String, List<String>> customTypeMappings) {
+        Map<String, Set<String>> as400Groups = collectGroups(DatabaseType.AS400, AS400_RULE_SEEDS, customTypeMappings);
+        Map<String, Set<String>> gaussGroups = collectGroups(DatabaseType.GAUSS, GAUSS_RULE_SEEDS, customTypeMappings);
+        List<TypeEqualityRule> rules = new java.util.ArrayList<>();
+        LinkedHashSet<String> canonicalTypes = new LinkedHashSet<>();
+        canonicalTypes.addAll(as400Groups.keySet());
+        canonicalTypes.addAll(gaussGroups.keySet());
+        for (String canonicalType : canonicalTypes) {
+            Set<String> as400Types = as400Groups.get(canonicalType);
+            Set<String> gaussTypes = gaussGroups.get(canonicalType);
+            if (as400Types == null || as400Types.isEmpty() || gaussTypes == null || gaussTypes.isEmpty()) {
+                continue;
+            }
+            rules.add(new TypeEqualityRule(
+                    join(as400Types),
+                    join(gaussTypes),
+                    canonicalType,
+                    canonicalType + " 后判定为一致"
+            ));
+        }
+        return rules;
+    }
+
+    private Map<String, Set<String>> collectGroups(DatabaseType databaseType,
+                                                   List<String> rawTypes,
+                                                   Map<String, List<String>> customTypeMappings) {
+        Map<String, Set<String>> groups = new LinkedHashMap<>();
+        for (String rawType : rawTypes) {
+            String canonicalType = normalize(databaseType, rawType, customTypeMappings);
+            if (canonicalType == null) {
+                continue;
+            }
+            groups.computeIfAbsent(canonicalType, ignored -> new LinkedHashSet<>()).add(rawType);
+        }
+        return groups;
+    }
+
+    private String join(Set<String> values) {
+        return String.join(", ", values);
+    }
+
+    public record TypeEqualityRule(String as400Types, String gaussTypes, String comparableType, String description) {
     }
 }

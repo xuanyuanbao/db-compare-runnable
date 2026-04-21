@@ -16,6 +16,8 @@ public class ColumnComparisonRecord {
     private boolean targetColumnExists;
     private String sourceType;
     private String targetType;
+    private String sourceComparableType;
+    private String targetComparableType;
     private ComparisonStatus typeStatus;
     private String sourceLength;
     private String targetLength;
@@ -59,6 +61,10 @@ public class ColumnComparisonRecord {
     public void setSourceType(String sourceType) { this.sourceType = sourceType; }
     public String getTargetType() { return targetType; }
     public void setTargetType(String targetType) { this.targetType = targetType; }
+    public String getSourceComparableType() { return sourceComparableType; }
+    public void setSourceComparableType(String sourceComparableType) { this.sourceComparableType = sourceComparableType; }
+    public String getTargetComparableType() { return targetComparableType; }
+    public void setTargetComparableType(String targetComparableType) { this.targetComparableType = targetComparableType; }
     public ComparisonStatus getTypeStatus() { return typeStatus; }
     public void setTypeStatus(ComparisonStatus typeStatus) { this.typeStatus = typeStatus; }
     public String getSourceLength() { return sourceLength; }

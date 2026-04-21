@@ -3,6 +3,7 @@ package com.example.dbcompare.infrastructure.output;
 import com.example.dbcompare.domain.enums.ComparisonStatus;
 import com.example.dbcompare.domain.model.ColumnComparisonRecord;
 import com.example.dbcompare.domain.model.CompareOptions;
+import com.example.dbcompare.util.TypeNormalizer;
 import org.apache.poi.ss.SpreadsheetVersion;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
@@ -25,7 +26,9 @@ import java.util.List;
 
 public class ExcelReportWriter {
     private static final String DETAIL_SHEET_NAME = "明细";
+    private static final String TYPE_RULE_SHEET_NAME = "类型判等规则";
 
+    private final TypeNormalizer typeNormalizer = new TypeNormalizer();
     private final int maxRowsPerSheet;
 
     public ExcelReportWriter() {
@@ -51,7 +54,18 @@ public class ExcelReportWriter {
             CellStyle mismatchStyle = createStatusStyle(workbook, IndexedColors.ROSE);
             CellStyle naStyle = createStatusStyle(workbook, IndexedColors.GREY_25_PERCENT);
             CellStyle infoStyle = createStatusStyle(workbook, IndexedColors.LIGHT_YELLOW);
-            return new ExcelReportSession(path, workbook, headerStyle, matchStyle, mismatchStyle, naStyle, infoStyle, maxRowsPerSheet, buildColumns(options));
+            return new ExcelReportSession(
+                    path,
+                    workbook,
+                    headerStyle,
+                    matchStyle,
+                    mismatchStyle,
+                    naStyle,
+                    infoStyle,
+                    maxRowsPerSheet,
+                    buildColumns(options),
+                    options == null ? new CompareOptions() : options
+            );
         } catch (IOException e) {
             throw new IllegalStateException("Failed to open Excel report: " + path, e);
         }
@@ -71,20 +85,20 @@ public class ExcelReportWriter {
         columns.add(new DetailColumn("字段名", 20, (row, record) -> row.write(record.getColumnName(), null)));
         columns.add(new DetailColumn("源端存在", 16, (row, record) -> row.write(OutputTextFormatter.boolText(record.isSourceColumnExists()), null)));
         columns.add(new DetailColumn("目标端存在", 16, (row, record) -> row.write(OutputTextFormatter.boolText(record.isTargetColumnExists()), null)));
-        columns.add(new DetailColumn("源类型", 18, (row, record) -> row.write(record.getSourceType(), null)));
-        columns.add(new DetailColumn("目标类型", 18, (row, record) -> row.write(record.getTargetType(), null)));
+        columns.add(new DetailColumn("源原始类型", 18, (row, record) -> row.write(record.getSourceType(), null)));
+        columns.add(new DetailColumn("目标原始类型", 18, (row, record) -> row.write(record.getTargetType(), null)));
         columns.add(new DetailColumn("类型状态", 18, (row, record) -> row.write(statusText(record.getTypeStatus()), row.statusStyle(record))));
-        columns.add(new DetailColumn("源长度", 18, (row, record) -> row.write(record.getSourceLength(), null)));
-        columns.add(new DetailColumn("目标长度", 18, (row, record) -> row.write(record.getTargetLength(), null)));
+        columns.add(new DetailColumn("源原始长度", 18, (row, record) -> row.write(record.getSourceLength(), null)));
+        columns.add(new DetailColumn("目标原始长度", 18, (row, record) -> row.write(record.getTargetLength(), null)));
         columns.add(new DetailColumn("长度状态", 18, (row, record) -> row.write(statusText(record.getLengthStatus()), row.statusStyle(record))));
         if (options.isCompareDefaultValue()) {
-            columns.add(new DetailColumn("源默认值", 18, (row, record) -> row.write(record.getSourceDefaultValue(), null)));
-            columns.add(new DetailColumn("目标默认值", 18, (row, record) -> row.write(record.getTargetDefaultValue(), null)));
+            columns.add(new DetailColumn("源原始默认值", 24, (row, record) -> row.write(record.getSourceDefaultValue(), null)));
+            columns.add(new DetailColumn("目标原始默认值", 24, (row, record) -> row.write(record.getTargetDefaultValue(), null)));
             columns.add(new DetailColumn("默认值状态", 18, (row, record) -> row.write(statusText(record.getDefaultStatus()), row.statusStyle(record))));
         }
         if (options.isCompareNullable()) {
-            columns.add(new DetailColumn("源端可空", 18, (row, record) -> row.write(OutputTextFormatter.nullableText(record.getSourceNullable()), null)));
-            columns.add(new DetailColumn("目标端可空", 18, (row, record) -> row.write(OutputTextFormatter.nullableText(record.getTargetNullable()), null)));
+            columns.add(new DetailColumn("源原始可空", 18, (row, record) -> row.write(record.getSourceNullable(), null)));
+            columns.add(new DetailColumn("目标原始可空", 18, (row, record) -> row.write(record.getTargetNullable(), null)));
             columns.add(new DetailColumn("可空状态", 18, (row, record) -> row.write(statusText(record.getNullableStatus()), row.statusStyle(record))));
         }
         columns.add(new DetailColumn("整体状态", 18, (row, record) -> row.write(statusText(record.getOverallStatus()), row.statusStyle(record))));
@@ -127,6 +141,7 @@ public class ExcelReportWriter {
         private final CellStyle infoStyle;
         private final int maxRowsPerSheet;
         private final List<DetailColumn> columns;
+        private final CompareOptions options;
 
         private SXSSFSheet sheet;
         private int sheetSequence = 0;
@@ -140,7 +155,8 @@ public class ExcelReportWriter {
                                    CellStyle naStyle,
                                    CellStyle infoStyle,
                                    int maxRowsPerSheet,
-                                   List<DetailColumn> columns) {
+                                   List<DetailColumn> columns,
+                                   CompareOptions options) {
             this.path = path;
             this.workbook = workbook;
             this.headerStyle = headerStyle;
@@ -150,7 +166,9 @@ public class ExcelReportWriter {
             this.infoStyle = infoStyle;
             this.maxRowsPerSheet = maxRowsPerSheet;
             this.columns = columns;
-            this.sheet = createSheet();
+            this.options = options;
+            this.sheet = createDetailSheet();
+            createTypeRuleSheet();
         }
 
         public void append(List<ColumnComparisonRecord> records) {
@@ -180,11 +198,11 @@ public class ExcelReportWriter {
                 return;
             }
             applyAutoFilter(sheet, rowIndex);
-            sheet = createSheet();
+            sheet = createDetailSheet();
             rowIndex = 1;
         }
 
-        private SXSSFSheet createSheet() {
+        private SXSSFSheet createDetailSheet() {
             String sheetName = sheetSequence == 0 ? DETAIL_SHEET_NAME : DETAIL_SHEET_NAME + "_" + (sheetSequence + 1);
             sheetSequence++;
             SXSSFSheet createdSheet = workbook.createSheet(sheetName);
@@ -197,6 +215,30 @@ public class ExcelReportWriter {
             }
             createdSheet.createFreezePane(0, 1);
             return createdSheet;
+        }
+
+        private void createTypeRuleSheet() {
+            SXSSFSheet ruleSheet = workbook.createSheet(TYPE_RULE_SHEET_NAME);
+            List<String> headers = List.of("AS400原始类型", "Gauss原始类型", "比较归一类型", "判等说明");
+            Row header = ruleSheet.createRow(0);
+            for (int index = 0; index < headers.size(); index++) {
+                Cell cell = header.createCell(index);
+                cell.setCellValue(headers.get(index));
+                cell.setCellStyle(headerStyle);
+                ruleSheet.setColumnWidth(index, (index == 3 ? 36 : 24) * 256);
+            }
+            int ruleRowIndex = 1;
+            for (TypeNormalizer.TypeEqualityRule rule : typeNormalizer.describeAs400GaussRules(options.getTypeMappings())) {
+                Row row = ruleSheet.createRow(ruleRowIndex++);
+                row.createCell(0).setCellValue(rule.as400Types());
+                row.createCell(1).setCellValue(rule.gaussTypes());
+                row.createCell(2).setCellValue(rule.comparableType());
+                row.createCell(3).setCellValue(rule.description());
+            }
+            ruleSheet.createFreezePane(0, 1);
+            if (ruleRowIndex > 1) {
+                ruleSheet.setAutoFilter(new CellRangeAddress(0, ruleRowIndex - 1, 0, headers.size() - 1));
+            }
         }
 
         private void applyAutoFilter(SXSSFSheet targetSheet, int nextRowIndex) {

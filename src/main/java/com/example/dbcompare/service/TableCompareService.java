@@ -219,42 +219,52 @@ public class TableCompareService {
 
         RowDiffAccumulator accumulator = new RowDiffAccumulator();
 
+        String sourceRawType = sourceColumn.getDataType();
+        String targetRawType = targetColumn.getDataType();
         String sourceType = normalizeType(sourceInfo.getType(), sourceColumn, options);
         String targetType = normalizeType(DatabaseType.GAUSS, targetColumn, options);
-        record.setSourceType(sourceType);
-        record.setTargetType(targetType);
+        record.setSourceType(sourceRawType);
+        record.setTargetType(targetRawType);
+        record.setSourceComparableType(sourceType);
+        record.setTargetComparableType(targetType);
         applyOptionalAttributeComparison(record::setTypeStatus, options.isCompareType(), options.isTypeMismatchAffectResult(),
                 Objects.equals(sourceType, targetType), DiffType.COLUMN_TYPE_MISMATCH, "Type mismatch", accumulator, result,
                 sourceInfo, sourceSchema, sourceTableName, targetSchema, targetTableName, columnName,
-                sourceType, targetType);
+                sourceRawType, targetRawType);
 
-        String sourceLength = normalizeLength(sourceColumn.getLength());
-        String targetLength = normalizeLength(targetColumn.getLength());
-        record.setSourceLength(sourceLength);
-        record.setTargetLength(targetLength);
+        String sourceRawLength = sourceColumn.getLength();
+        String targetRawLength = targetColumn.getLength();
+        String sourceLength = normalizeLength(sourceRawLength);
+        String targetLength = normalizeLength(targetRawLength);
+        record.setSourceLength(sourceRawLength);
+        record.setTargetLength(targetRawLength);
         boolean lengthAffectsResult = resolveLengthMismatchAffectResult(options, sourceColumn, targetColumn, sourceType, targetType, sourceLength, targetLength);
         applyOptionalAttributeComparison(record::setLengthStatus, options.isCompareLength(), lengthAffectsResult,
                 Objects.equals(sourceLength, targetLength), DiffType.COLUMN_LENGTH_MISMATCH, "Length mismatch", accumulator, result,
                 sourceInfo, sourceSchema, sourceTableName, targetSchema, targetTableName, columnName,
-                sourceLength, targetLength);
+                sourceRawLength, targetRawLength);
 
-        String sourceDefault = DefaultValueNormalizer.normalize(sourceColumn.getDefaultValue());
-        String targetDefault = DefaultValueNormalizer.normalize(targetColumn.getDefaultValue());
-        record.setSourceDefaultValue(sourceDefault);
-        record.setTargetDefaultValue(targetDefault);
+        String sourceRawDefault = sourceColumn.getDefaultValue();
+        String targetRawDefault = targetColumn.getDefaultValue();
+        String sourceDefault = DefaultValueNormalizer.normalize(sourceRawDefault);
+        String targetDefault = DefaultValueNormalizer.normalize(targetRawDefault);
+        record.setSourceDefaultValue(sourceRawDefault);
+        record.setTargetDefaultValue(targetRawDefault);
         applyOptionalAttributeComparison(record::setDefaultStatus, options.isCompareDefaultValue(), options.isDefaultMismatchAffectResult(),
                 Objects.equals(sourceDefault, targetDefault), DiffType.COLUMN_DEFAULT_MISMATCH, "Default value mismatch", accumulator, result,
                 sourceInfo, sourceSchema, sourceTableName, targetSchema, targetTableName, columnName,
-                sourceDefault, targetDefault);
+                sourceRawDefault, targetRawDefault);
 
-        String sourceNullable = normalizeNullable(sourceColumn.getNullable());
-        String targetNullable = normalizeNullable(targetColumn.getNullable());
-        record.setSourceNullable(sourceNullable);
-        record.setTargetNullable(targetNullable);
+        String sourceRawNullable = sourceColumn.getNullable();
+        String targetRawNullable = targetColumn.getNullable();
+        String sourceNullable = normalizeNullable(sourceRawNullable);
+        String targetNullable = normalizeNullable(targetRawNullable);
+        record.setSourceNullable(sourceRawNullable);
+        record.setTargetNullable(targetRawNullable);
         applyOptionalAttributeComparison(record::setNullableStatus, options.isCompareNullable(), options.isNullableMismatchAffectResult(),
                 Objects.equals(sourceNullable, targetNullable), DiffType.COLUMN_NULLABLE_MISMATCH, "Nullable mismatch", accumulator, result,
                 sourceInfo, sourceSchema, sourceTableName, targetSchema, targetTableName, columnName,
-                sourceNullable, targetNullable);
+                sourceRawNullable, targetRawNullable);
 
         if (accumulator.isEmpty()) {
             record.setOverallStatus(ComparisonStatus.MATCH);
@@ -322,14 +332,16 @@ public class TableCompareService {
         ColumnComparisonRecord record = buildBaseRow(sourceInfo, sourceSchema, sourceTableName, targetSchema, targetTableName, columnName);
         record.setSourceColumnExists(sourceExists);
         record.setTargetColumnExists(targetExists);
-        record.setSourceType(sourceColumn == null ? null : normalizeType(sourceInfo.getType(), sourceColumn, options));
-        record.setTargetType(targetColumn == null ? null : normalizeType(DatabaseType.GAUSS, targetColumn, options));
-        record.setSourceLength(sourceColumn == null ? null : normalizeLength(sourceColumn.getLength()));
-        record.setTargetLength(targetColumn == null ? null : normalizeLength(targetColumn.getLength()));
-        record.setSourceDefaultValue(sourceColumn == null ? null : DefaultValueNormalizer.normalize(sourceColumn.getDefaultValue()));
-        record.setTargetDefaultValue(targetColumn == null ? null : DefaultValueNormalizer.normalize(targetColumn.getDefaultValue()));
-        record.setSourceNullable(sourceColumn == null ? null : normalizeNullable(sourceColumn.getNullable()));
-        record.setTargetNullable(targetColumn == null ? null : normalizeNullable(targetColumn.getNullable()));
+        record.setSourceType(sourceColumn == null ? null : sourceColumn.getDataType());
+        record.setTargetType(targetColumn == null ? null : targetColumn.getDataType());
+        record.setSourceComparableType(sourceColumn == null ? null : normalizeType(sourceInfo.getType(), sourceColumn, options));
+        record.setTargetComparableType(targetColumn == null ? null : normalizeType(DatabaseType.GAUSS, targetColumn, options));
+        record.setSourceLength(sourceColumn == null ? null : sourceColumn.getLength());
+        record.setTargetLength(targetColumn == null ? null : targetColumn.getLength());
+        record.setSourceDefaultValue(sourceColumn == null ? null : sourceColumn.getDefaultValue());
+        record.setTargetDefaultValue(targetColumn == null ? null : targetColumn.getDefaultValue());
+        record.setSourceNullable(sourceColumn == null ? null : sourceColumn.getNullable());
+        record.setTargetNullable(targetColumn == null ? null : targetColumn.getNullable());
         record.setTypeStatus(ComparisonStatus.NOT_APPLICABLE);
         record.setLengthStatus(ComparisonStatus.NOT_APPLICABLE);
         record.setDefaultStatus(ComparisonStatus.NOT_APPLICABLE);
