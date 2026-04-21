@@ -19,6 +19,8 @@ import java.util.Map;
 import java.util.Properties;
 
 public class ConfigLoader {
+    private final TypeRuleFileLoader typeRuleFileLoader = new TypeRuleFileLoader();
+
     public CompareConfig load(Path path) {
         Properties properties = new Properties();
         try (InputStream in = Files.newInputStream(path)) {
@@ -105,7 +107,11 @@ public class ConfigLoader {
                 "compare.options.objectType", "compare.options.object-type"));
         config.getOptions().setRelationMode(enumValue(properties, CompareRelationMode.class, CompareRelationMode.TABLE_TO_TABLE,
                 "compare.options.relationMode", "compare.options.relation-mode"));
+        config.getOptions().setTypeRuleFile(firstNonBlank(
+                properties.getProperty("compare.options.typeRuleFile"),
+                properties.getProperty("compare.options.type-rule-file")));
         loadTypeMappings(properties, config);
+        typeRuleFileLoader.apply(config);
         config.getReport().getManualConfirmation().setEnabled(boolValue(properties, "report.manualConfirmation.enabled", false));
         config.getReport().getManualConfirmation().setExcelDir(firstNonBlank(
                 properties.getProperty("report.manualConfirmation.excelDir"),

@@ -12,10 +12,15 @@ import java.util.HashSet;
 import java.util.Set;
 
 public class ConfigValidator {
+    private final TypeRuleFileLoader typeRuleFileLoader = new TypeRuleFileLoader();
+
     public void validate(CompareConfig config) {
         if (config == null) throw new IllegalArgumentException("Compare config must not be null");
         if (config.getSources().isEmpty()) throw new IllegalArgumentException("At least one source datasource is required");
         if (config.getTarget() == null) throw new IllegalArgumentException("Target datasource is required");
+        if (!typeRuleFileLoader.exists(config.getOptions().getTypeRuleFile())) {
+            throw new IllegalArgumentException("Type rule file not found or unreadable: " + config.getOptions().getTypeRuleFile());
+        }
 
         Set<String> sourceNames = new HashSet<>();
         for (DataSourceInfo source : config.getSources()) {

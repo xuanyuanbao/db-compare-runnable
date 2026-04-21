@@ -2,6 +2,7 @@ package com.example.dbcompare.app;
 
 import com.example.dbcompare.config.ConfigValidator;
 import com.example.dbcompare.config.DbCompareProperties;
+import com.example.dbcompare.config.TypeRuleFileLoader;
 import com.example.dbcompare.domain.model.CompareSummary;
 import com.example.dbcompare.service.CompareOrchestrator;
 import org.slf4j.Logger;
@@ -16,18 +17,22 @@ public class CompareApplicationRunner implements ApplicationRunner {
 
     private final DbCompareProperties properties;
     private final ConfigValidator configValidator;
+    private final TypeRuleFileLoader typeRuleFileLoader;
     private final CompareOrchestrator compareOrchestrator;
 
     public CompareApplicationRunner(DbCompareProperties properties,
                                     ConfigValidator configValidator,
+                                    TypeRuleFileLoader typeRuleFileLoader,
                                     CompareOrchestrator compareOrchestrator) {
         this.properties = properties;
         this.configValidator = configValidator;
+        this.typeRuleFileLoader = typeRuleFileLoader;
         this.compareOrchestrator = compareOrchestrator;
     }
 
     @Override
     public void run(ApplicationArguments args) {
+        typeRuleFileLoader.apply(properties);
         configValidator.validate(properties);
         CompareSummary summary = compareOrchestrator.execute(properties);
         log.info("Compare finished. diffCount={}", summary.getDiffCount());

@@ -20,6 +20,7 @@ public class CompareOptions {
     private boolean lengthTargetLongerAffectResult = false;
     private boolean defaultMismatchAffectResult = true;
     private boolean nullableMismatchAffectResult = true;
+    private String typeRuleFile = "classpath:type-equality-rules.properties";
     private int sourceLoadThreads = 4;
     private CompareObjectType objectType = CompareObjectType.TABLE;
     private CompareRelationMode relationMode = CompareRelationMode.TABLE_TO_TABLE;
@@ -59,6 +60,12 @@ public class CompareOptions {
     public void setNullableMismatchAffectResult(boolean nullableMismatchAffectResult) {
         this.nullableMismatchAffectResult = nullableMismatchAffectResult;
     }
+    public String getTypeRuleFile() { return typeRuleFile; }
+    public void setTypeRuleFile(String typeRuleFile) {
+        this.typeRuleFile = typeRuleFile == null || typeRuleFile.isBlank()
+                ? "classpath:type-equality-rules.properties"
+                : typeRuleFile.trim();
+    }
     public int getSourceLoadThreads() { return sourceLoadThreads; }
     public void setSourceLoadThreads(int sourceLoadThreads) { this.sourceLoadThreads = sourceLoadThreads; }
     public CompareObjectType getObjectType() { return objectType; }
@@ -68,6 +75,7 @@ public class CompareOptions {
         this.relationMode = relationMode == null ? CompareRelationMode.TABLE_TO_TABLE : relationMode;
     }
     public Map<String, List<String>> getTypeMappings() { return typeMappings; }
+    public void clearTypeMappings() { typeMappings.clear(); }
     public void putTypeMapping(String canonicalType, List<String> aliases) {
         if (canonicalType == null || canonicalType.isBlank()) {
             return;

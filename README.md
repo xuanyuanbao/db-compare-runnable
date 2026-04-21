@@ -99,8 +99,10 @@ Gradle 已内置常用 JDBC 驱动：
   - 控制“默认值不一致”是否影响最终结果
 - `dbcompare.options.nullable-mismatch-affect-result`
   - 控制“可空不一致”是否影响最终结果
+- `dbcompare.options.type-rule-file`
+  - 类型判等规则文件位置，默认 `classpath:type-equality-rules.properties`
 - `dbcompare.options.type-mappings.*`
-  - 自定义类型映射，例如 `date=DATE,TIMESTAMP`
+  - 可选覆盖项，用来在默认规则文件之上补充或覆盖某个归一类型
 - `dbcompare.output.csv-path`
 - `dbcompare.output.excel-path`
 - `dbcompare.output.summary-excel-path`
@@ -168,6 +170,15 @@ Gradle 已内置常用 JDBC 驱动：
 这样你可以同时看到：
 - 明细里字段本身的原始类型
 - 系统判定“一致/不一致”时采用的映射规则
+
+类型判等规则现在默认来自：
+- [type-equality-rules.properties](D:/develop/java_develop/temp/db-compare-runnable/src/main/resources/type-equality-rules.properties)
+
+这意味着：
+- 程序会先加载这份默认规则文件
+- 你可以直接修改这份文件，决定哪些原始类型应该判定为一致
+- 如果某个环境还需要额外覆盖，可以继续使用 `dbcompare.options.type-mappings.*`
+- Excel 里的 `类型判等规则` sheet 展示的是当前生效后的规则
 
 ### 汇总 Excel
 

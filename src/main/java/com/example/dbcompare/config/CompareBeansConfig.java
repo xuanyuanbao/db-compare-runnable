@@ -25,6 +25,11 @@ public class CompareBeansConfig {
     }
 
     @Bean
+    public TypeRuleFileLoader typeRuleFileLoader() {
+        return new TypeRuleFileLoader();
+    }
+
+    @Bean
     public MetadataLoadService metadataLoadService() {
         return new MetadataLoadService();
     }

@@ -3,8 +3,8 @@ package com.example.dbcompare.util;
 import com.example.dbcompare.domain.enums.DatabaseType;
 
 import java.util.EnumMap;
-import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -48,9 +48,15 @@ public class TypeNormalizer {
             return null;
         }
         String type = rawType.trim().toUpperCase();
-        if ("CHARACTER VARYING".equals(type)) return "VARCHAR";
-        if ("CHARACTER".equals(type)) return "CHAR";
-        if ("DECIMAL".equals(type)) return "NUMERIC";
+        if ("CHARACTER VARYING".equals(type)) {
+            return "VARCHAR";
+        }
+        if ("CHARACTER".equals(type)) {
+            return "CHAR";
+        }
+        if ("DECIMAL".equals(type)) {
+            return "NUMERIC";
+        }
         return type;
     }
 
@@ -92,7 +98,7 @@ public class TypeNormalizer {
                     join(as400Types),
                     join(gaussTypes),
                     canonicalType,
-                    canonicalType + " 后判定为一致"
+                    "AS400 与 Gauss 类型在归一到 " + canonicalType + " 后判定为一致"
             ));
         }
         return rules;
