@@ -17,6 +17,15 @@ public class SqlReportWriter {
     private static final int SOURCE_EXISTS_INDEX = 6;
     private static final int TARGET_EXISTS_INDEX = 7;
     private static final int AFFECTS_RESULT_INDEX = 22;
+    private static final String[] DETAIL_HEADERS = {
+            "源数据库", "源Schema", "源表", "目标Schema", "目标对象", "字段名",
+            "源端存在", "目标端存在",
+            "源类型", "目标类型", "类型状态",
+            "源长度", "目标长度", "长度状态",
+            "源默认值", "目标默认值", "默认值状态",
+            "源端可空", "目标端可空", "可空状态",
+            "整体状态", "差异分组", "是否影响结果", "差异类型", "说明"
+    };
     private static final String[] COLUMN_TYPES = {
             "VARCHAR(128)", "VARCHAR(128)", "VARCHAR(128)", "VARCHAR(128)", "VARCHAR(128)", "VARCHAR(128)",
             "TINYINT(1)", "TINYINT(1)",
@@ -54,12 +63,12 @@ public class SqlReportWriter {
         writer.write(quotedIdentifier(tableName));
         writer.write(" (");
         writer.newLine();
-        for (int index = 0; index < ExcelReportWriter.DETAIL_HEADERS.length; index++) {
+        for (int index = 0; index < DETAIL_HEADERS.length; index++) {
             writer.write("    ");
-            writer.write(quotedIdentifier(ExcelReportWriter.DETAIL_HEADERS[index]));
+            writer.write(quotedIdentifier(DETAIL_HEADERS[index]));
             writer.write(' ');
             writer.write(COLUMN_TYPES[index]);
-            if (index < ExcelReportWriter.DETAIL_HEADERS.length - 1) {
+            if (index < DETAIL_HEADERS.length - 1) {
                 writer.write(',');
             }
             writer.newLine();
@@ -119,11 +128,11 @@ public class SqlReportWriter {
             writer.write("INSERT INTO ");
             writer.write(quotedIdentifier(tableName));
             writer.write(" (");
-            for (int index = 0; index < ExcelReportWriter.DETAIL_HEADERS.length; index++) {
+            for (int index = 0; index < DETAIL_HEADERS.length; index++) {
                 if (index > 0) {
                     writer.write(", ");
                 }
-                writer.write(quotedIdentifier(ExcelReportWriter.DETAIL_HEADERS[index]));
+                writer.write(quotedIdentifier(DETAIL_HEADERS[index]));
             }
             writer.write(") VALUES");
             writer.newLine();

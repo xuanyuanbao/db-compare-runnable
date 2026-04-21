@@ -189,12 +189,15 @@ public class CompareOrchestrator {
                 ? new ArrayList<>()
                 : null;
         try (CsvReportWriter.CsvReportSession csvSession = csvReportWriter.open(Path.of(compareConfig.getOutput().getCsvPath()));
-             ExcelReportWriter.ExcelReportSession excelSession = excelReportWriter.open(Path.of(compareConfig.getOutput().getExcelPath()));
+             ExcelReportWriter.ExcelReportSession excelSession = excelReportWriter.open(
+                     Path.of(compareConfig.getOutput().getExcelPath()),
+                     compareConfig.getOptions());
              SqlReportWriter.SqlReportSession sqlSession = sqlReportWriter.open(
                      Path.of(compareConfig.getOutput().getSqlPath()),
                      compareConfig.getOutput().getSqlTableName());
              SummaryExcelReportWriter.SummaryExcelReportSession summaryExcelSession = summaryExcelReportWriter.open(
-                     Path.of(compareConfig.getOutput().getSummaryExcelPath()))) {
+                     Path.of(compareConfig.getOutput().getSummaryExcelPath()),
+                     compareConfig.getOptions())) {
 
             for (DataSourceInfo sourceInfo : compareConfig.getSources()) {
                 DatabaseMeta sourceDbMeta = metadataLoadService.loadSource(sourceInfo);
@@ -254,12 +257,15 @@ public class CompareOrchestrator {
                 : null;
 
         try (CsvReportWriter.CsvReportSession csvSession = csvReportWriter.open(Path.of(compareConfig.getOutput().getCsvPath()));
-             ExcelReportWriter.ExcelReportSession excelSession = excelReportWriter.open(Path.of(compareConfig.getOutput().getExcelPath()));
+             ExcelReportWriter.ExcelReportSession excelSession = excelReportWriter.open(
+                     Path.of(compareConfig.getOutput().getExcelPath()),
+                     compareConfig.getOptions());
              SqlReportWriter.SqlReportSession sqlSession = sqlReportWriter.open(
                      Path.of(compareConfig.getOutput().getSqlPath()),
                      compareConfig.getOutput().getSqlTableName());
              SummaryExcelReportWriter.SummaryExcelReportSession summaryExcelSession = summaryExcelReportWriter.open(
-                     Path.of(compareConfig.getOutput().getSummaryExcelPath()))) {
+                     Path.of(compareConfig.getOutput().getSummaryExcelPath()),
+                     compareConfig.getOptions())) {
 
             for (int index = 0; index < compareTasks.size(); index++) {
                 CompareTask task = compareTasks.get(index);

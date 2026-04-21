@@ -2,6 +2,7 @@ package com.example.dbcompare.infrastructure.output;
 
 import com.example.dbcompare.domain.enums.ComparisonStatus;
 import com.example.dbcompare.domain.model.ColumnComparisonRecord;
+import com.example.dbcompare.domain.model.CompareOptions;
 import org.apache.poi.ss.SpreadsheetVersion;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
@@ -19,19 +20,11 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 
 public class ExcelReportWriter {
     private static final String DETAIL_SHEET_NAME = "明细";
-    static final String[] DETAIL_HEADERS = {
-            "源数据库", "源Schema", "源表", "目标Schema", "目标对象", "字段名",
-            "源端存在", "目标端存在",
-            "源类型", "目标类型", "类型状态",
-            "源长度", "目标长度", "长度状态",
-            "源默认值", "目标默认值", "默认值状态",
-            "源端可空", "目标端可空", "可空状态",
-            "整体状态", "差异分组", "是否影响结果", "差异类型", "说明"
-    };
 
     private final int maxRowsPerSheet;
 
@@ -46,7 +39,7 @@ public class ExcelReportWriter {
         this.maxRowsPerSheet = maxRowsPerSheet;
     }
 
-    public ExcelReportSession open(Path path) {
+    public ExcelReportSession open(Path path, CompareOptions options) {
         try {
             if (path.getParent() != null) {
                 Files.createDirectories(path.getParent());
@@ -58,20 +51,52 @@ public class ExcelReportWriter {
             CellStyle mismatchStyle = createStatusStyle(workbook, IndexedColors.ROSE);
             CellStyle naStyle = createStatusStyle(workbook, IndexedColors.GREY_25_PERCENT);
             CellStyle infoStyle = createStatusStyle(workbook, IndexedColors.LIGHT_YELLOW);
-            return new ExcelReportSession(path, workbook, headerStyle, matchStyle, mismatchStyle, naStyle, infoStyle, maxRowsPerSheet);
+            return new ExcelReportSession(path, workbook, headerStyle, matchStyle, mismatchStyle, naStyle, infoStyle, maxRowsPerSheet, buildColumns(options));
         } catch (IOException e) {
             throw new IllegalStateException("Failed to open Excel report: " + path, e);
         }
     }
 
-    private int defaultColumnWidth(int columnIndex) {
-        if (columnIndex == DETAIL_HEADERS.length - 1) {
-            return 60 * 256;
+    public ExcelReportSession open(Path path) {
+        return open(path, new CompareOptions());
+    }
+
+    private List<DetailColumn> buildColumns(CompareOptions options) {
+        List<DetailColumn> columns = new ArrayList<>();
+        columns.add(new DetailColumn("源数据库", 20, (row, record) -> row.write(record.getSourceDatabaseName(), null)));
+        columns.add(new DetailColumn("源Schema", 20, (row, record) -> row.write(record.getSourceSchemaName(), null)));
+        columns.add(new DetailColumn("源表", 20, (row, record) -> row.write(record.getSourceTableName(), null)));
+        columns.add(new DetailColumn("目标Schema", 20, (row, record) -> row.write(record.getTargetSchemaName(), null)));
+        columns.add(new DetailColumn("目标对象", 20, (row, record) -> row.write(record.getTargetTableName(), null)));
+        columns.add(new DetailColumn("字段名", 20, (row, record) -> row.write(record.getColumnName(), null)));
+        columns.add(new DetailColumn("源端存在", 16, (row, record) -> row.write(OutputTextFormatter.boolText(record.isSourceColumnExists()), null)));
+        columns.add(new DetailColumn("目标端存在", 16, (row, record) -> row.write(OutputTextFormatter.boolText(record.isTargetColumnExists()), null)));
+        columns.add(new DetailColumn("源类型", 18, (row, record) -> row.write(record.getSourceType(), null)));
+        columns.add(new DetailColumn("目标类型", 18, (row, record) -> row.write(record.getTargetType(), null)));
+        columns.add(new DetailColumn("类型状态", 18, (row, record) -> row.write(statusText(record.getTypeStatus()), row.statusStyle(record))));
+        columns.add(new DetailColumn("源长度", 18, (row, record) -> row.write(record.getSourceLength(), null)));
+        columns.add(new DetailColumn("目标长度", 18, (row, record) -> row.write(record.getTargetLength(), null)));
+        columns.add(new DetailColumn("长度状态", 18, (row, record) -> row.write(statusText(record.getLengthStatus()), row.statusStyle(record))));
+        if (options.isCompareDefaultValue()) {
+            columns.add(new DetailColumn("源默认值", 18, (row, record) -> row.write(record.getSourceDefaultValue(), null)));
+            columns.add(new DetailColumn("目标默认值", 18, (row, record) -> row.write(record.getTargetDefaultValue(), null)));
+            columns.add(new DetailColumn("默认值状态", 18, (row, record) -> row.write(statusText(record.getDefaultStatus()), row.statusStyle(record))));
         }
-        if (columnIndex >= 8 && columnIndex <= 20) {
-            return 18 * 256;
+        if (options.isCompareNullable()) {
+            columns.add(new DetailColumn("源端可空", 18, (row, record) -> row.write(OutputTextFormatter.nullableText(record.getSourceNullable()), null)));
+            columns.add(new DetailColumn("目标端可空", 18, (row, record) -> row.write(OutputTextFormatter.nullableText(record.getTargetNullable()), null)));
+            columns.add(new DetailColumn("可空状态", 18, (row, record) -> row.write(statusText(record.getNullableStatus()), row.statusStyle(record))));
         }
-        return 20 * 256;
+        columns.add(new DetailColumn("整体状态", 18, (row, record) -> row.write(statusText(record.getOverallStatus()), row.statusStyle(record))));
+        columns.add(new DetailColumn("差异分组", 18, (row, record) -> row.write(OutputTextFormatter.diffGroupText(record.getDiffGroup()), row.statusStyle(record))));
+        columns.add(new DetailColumn("是否影响结果", 18, (row, record) -> row.write(OutputTextFormatter.boolText(record.isAffectsResult()), row.statusStyle(record))));
+        columns.add(new DetailColumn("差异类型", 22, (row, record) -> row.write(OutputTextFormatter.diffTypesText(record.getDiffTypes()), null)));
+        columns.add(new DetailColumn("说明", 60, (row, record) -> row.write(OutputTextFormatter.messageText(record.getMessage()), null)));
+        return columns;
+    }
+
+    private static String statusText(ComparisonStatus status) {
+        return OutputTextFormatter.comparisonStatusText(status);
     }
 
     private CellStyle createHeaderStyle(SXSSFWorkbook workbook) {
@@ -101,6 +126,7 @@ public class ExcelReportWriter {
         private final CellStyle naStyle;
         private final CellStyle infoStyle;
         private final int maxRowsPerSheet;
+        private final List<DetailColumn> columns;
 
         private SXSSFSheet sheet;
         private int sheetSequence = 0;
@@ -113,7 +139,8 @@ public class ExcelReportWriter {
                                    CellStyle mismatchStyle,
                                    CellStyle naStyle,
                                    CellStyle infoStyle,
-                                   int maxRowsPerSheet) {
+                                   int maxRowsPerSheet,
+                                   List<DetailColumn> columns) {
             this.path = path;
             this.workbook = workbook;
             this.headerStyle = headerStyle;
@@ -122,6 +149,7 @@ public class ExcelReportWriter {
             this.naStyle = naStyle;
             this.infoStyle = infoStyle;
             this.maxRowsPerSheet = maxRowsPerSheet;
+            this.columns = columns;
             this.sheet = createSheet();
         }
 
@@ -129,32 +157,10 @@ public class ExcelReportWriter {
             for (ColumnComparisonRecord record : records) {
                 ensureCapacityForNextRow();
                 Row row = sheet.createRow(rowIndex++);
-                int columnIndex = 0;
-                writeCell(row, columnIndex++, record.getSourceDatabaseName(), null);
-                writeCell(row, columnIndex++, record.getSourceSchemaName(), null);
-                writeCell(row, columnIndex++, record.getSourceTableName(), null);
-                writeCell(row, columnIndex++, record.getTargetSchemaName(), null);
-                writeCell(row, columnIndex++, record.getTargetTableName(), null);
-                writeCell(row, columnIndex++, record.getColumnName(), null);
-                writeCell(row, columnIndex++, OutputTextFormatter.boolText(record.isSourceColumnExists()), null);
-                writeCell(row, columnIndex++, OutputTextFormatter.boolText(record.isTargetColumnExists()), null);
-                writeCell(row, columnIndex++, record.getSourceType(), null);
-                writeCell(row, columnIndex++, record.getTargetType(), null);
-                writeCell(row, columnIndex++, statusText(record.getTypeStatus()), statusStyle(record));
-                writeCell(row, columnIndex++, record.getSourceLength(), null);
-                writeCell(row, columnIndex++, record.getTargetLength(), null);
-                writeCell(row, columnIndex++, statusText(record.getLengthStatus()), statusStyle(record));
-                writeCell(row, columnIndex++, record.getSourceDefaultValue(), null);
-                writeCell(row, columnIndex++, record.getTargetDefaultValue(), null);
-                writeCell(row, columnIndex++, statusText(record.getDefaultStatus()), statusStyle(record));
-                writeCell(row, columnIndex++, OutputTextFormatter.nullableText(record.getSourceNullable()), null);
-                writeCell(row, columnIndex++, OutputTextFormatter.nullableText(record.getTargetNullable()), null);
-                writeCell(row, columnIndex++, statusText(record.getNullableStatus()), statusStyle(record));
-                writeCell(row, columnIndex++, statusText(record.getOverallStatus()), statusStyle(record));
-                writeCell(row, columnIndex++, OutputTextFormatter.diffGroupText(record.getDiffGroup()), statusStyle(record));
-                writeCell(row, columnIndex++, OutputTextFormatter.boolText(record.isAffectsResult()), statusStyle(record));
-                writeCell(row, columnIndex++, OutputTextFormatter.diffTypesText(record.getDiffTypes()), null);
-                writeCell(row, columnIndex, OutputTextFormatter.messageText(record.getMessage()), null);
+                RowWriter rowWriter = new RowWriter(row);
+                for (DetailColumn column : columns) {
+                    column.writer.write(rowWriter, record);
+                }
             }
         }
 
@@ -183,11 +189,11 @@ public class ExcelReportWriter {
             sheetSequence++;
             SXSSFSheet createdSheet = workbook.createSheet(sheetName);
             Row header = createdSheet.createRow(0);
-            for (int index = 0; index < DETAIL_HEADERS.length; index++) {
+            for (int index = 0; index < columns.size(); index++) {
                 Cell cell = header.createCell(index);
-                cell.setCellValue(DETAIL_HEADERS[index]);
+                cell.setCellValue(columns.get(index).header);
                 cell.setCellStyle(headerStyle);
-                createdSheet.setColumnWidth(index, defaultColumnWidth(index));
+                createdSheet.setColumnWidth(index, columns.get(index).widthChars * 256);
             }
             createdSheet.createFreezePane(0, 1);
             return createdSheet;
@@ -195,19 +201,7 @@ public class ExcelReportWriter {
 
         private void applyAutoFilter(SXSSFSheet targetSheet, int nextRowIndex) {
             int lastRowIndex = Math.max(nextRowIndex - 1, 1);
-            targetSheet.setAutoFilter(new CellRangeAddress(0, lastRowIndex, 0, DETAIL_HEADERS.length - 1));
-        }
-
-        private void writeCell(Row row, int columnIndex, String value, CellStyle style) {
-            Cell cell = row.createCell(columnIndex);
-            cell.setCellValue(value == null ? "" : value);
-            if (style != null) {
-                cell.setCellStyle(style);
-            }
-        }
-
-        private String statusText(ComparisonStatus status) {
-            return OutputTextFormatter.comparisonStatusText(status);
+            targetSheet.setAutoFilter(new CellRangeAddress(0, lastRowIndex, 0, columns.size() - 1));
         }
 
         private CellStyle statusStyle(ColumnComparisonRecord record) {
@@ -224,5 +218,34 @@ public class ExcelReportWriter {
                 case NOT_APPLICABLE -> naStyle;
             };
         }
+
+        private final class RowWriter {
+            private final Row row;
+            private int columnIndex;
+
+            private RowWriter(Row row) {
+                this.row = row;
+            }
+
+            private void write(String value, CellStyle style) {
+                Cell cell = row.createCell(columnIndex++);
+                cell.setCellValue(value == null ? "" : value);
+                if (style != null) {
+                    cell.setCellStyle(style);
+                }
+            }
+
+            private CellStyle statusStyle(ColumnComparisonRecord record) {
+                return ExcelReportSession.this.statusStyle(record);
+            }
+        }
+    }
+
+    private record DetailColumn(String header, int widthChars, ColumnValueWriter writer) {
+    }
+
+    @FunctionalInterface
+    private interface ColumnValueWriter {
+        void write(ExcelReportSession.RowWriter row, ColumnComparisonRecord record);
     }
 }

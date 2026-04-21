@@ -3,6 +3,7 @@ package com.example.dbcompare.tests;
 import com.example.dbcompare.domain.enums.ComparisonStatus;
 import com.example.dbcompare.domain.enums.DiffGroup;
 import com.example.dbcompare.domain.model.ColumnComparisonRecord;
+import com.example.dbcompare.domain.model.CompareOptions;
 import com.example.dbcompare.infrastructure.output.ExcelReportWriter;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.Test;
@@ -17,33 +18,25 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class ExcelReportWriterTest {
     @Test
-    void splitsDataAcrossSheetsWhenSheetRowLimitIsReached(@TempDir Path tempDir) throws Exception {
+    void omitsDefaultAndNullableColumnsWhenThoseComparisonsAreDisabled(@TempDir Path tempDir) throws Exception {
         Path output = tempDir.resolve("detail.xlsx");
-        ExcelReportWriter writer = new ExcelReportWriter(3);
+        CompareOptions options = new CompareOptions();
+        options.setCompareDefaultValue(false);
+        options.setCompareNullable(false);
 
-        try (ExcelReportWriter.ExcelReportSession session = writer.open(output)) {
-            session.append(List.of(
-                    record("COL_1"),
-                    record("COL_2"),
-                    record("COL_3"),
-                    record("COL_4"),
-                    record("COL_5")
-            ));
+        try (ExcelReportWriter.ExcelReportSession session = new ExcelReportWriter(10).open(output, options)) {
+            session.append(List.of(record("COL_1")));
         }
 
         try (InputStream inputStream = Files.newInputStream(output);
              XSSFWorkbook workbook = new XSSFWorkbook(inputStream)) {
-            assertEquals(3, workbook.getNumberOfSheets(), "writer should create follow-up sheets when the first sheet is full");
-            assertEquals("明细", workbook.getSheetAt(0).getSheetName(), "first sheet should keep the base name");
-            assertEquals("明细_2", workbook.getSheetAt(1).getSheetName(), "second sheet should continue with an index suffix");
-            assertEquals("明细_3", workbook.getSheetAt(2).getSheetName(), "third sheet should continue with an index suffix");
-            assertEquals("字段名", workbook.getSheetAt(0).getRow(0).getCell(5).getStringCellValue(), "detail workbook headers should remain unchanged");
-            assertEquals("COL_1", workbook.getSheetAt(0).getRow(1).getCell(5).getStringCellValue(), "first sheet should contain the first record");
-            assertEquals("COL_3", workbook.getSheetAt(1).getRow(1).getCell(5).getStringCellValue(), "second sheet should continue with later records");
-            assertEquals("COL_5", workbook.getSheetAt(2).getRow(1).getCell(5).getStringCellValue(), "final sheet should contain the tail record");
-            assertEquals("一致", workbook.getSheetAt(0).getRow(1).getCell(20).getStringCellValue(), "status values should be localized");
-            assertEquals("主差异", workbook.getSheetAt(0).getRow(1).getCell(21).getStringCellValue(), "diff groups should be written to the detail workbook");
-            assertEquals("是", workbook.getSheetAt(0).getRow(1).getCell(22).getStringCellValue(), "result impact should be written to the detail workbook");
+            assertEquals("字段名", workbook.getSheetAt(0).getRow(0).getCell(5).getStringCellValue());
+            assertEquals("整体状态", workbook.getSheetAt(0).getRow(0).getCell(14).getStringCellValue());
+            assertEquals("差异分组", workbook.getSheetAt(0).getRow(0).getCell(15).getStringCellValue());
+            assertEquals("是否影响结果", workbook.getSheetAt(0).getRow(0).getCell(16).getStringCellValue());
+            assertEquals("说明", workbook.getSheetAt(0).getRow(0).getCell(18).getStringCellValue());
+            assertEquals(19, workbook.getSheetAt(0).getRow(0).getLastCellNum(), "detail excel should remove default/null related columns");
+            assertEquals("一致", workbook.getSheetAt(0).getRow(1).getCell(14).getStringCellValue());
         }
     }
 

@@ -144,6 +144,14 @@ Gradle 已内置常用 JDBC 驱动：
 - `默认值明细`
 - `可空明细`
 
+当配置关闭某类比对时，对应内容会在 Excel 中自动隐藏：
+- `dbcompare.options.compare-default-value=false`
+  - 明细 Excel 不再输出 `源默认值 / 目标默认值 / 默认值状态`
+  - 汇总 Excel 不再输出 `默认值状态`，也不会生成 `默认值明细`
+- `dbcompare.options.compare-nullable=false`
+  - 明细 Excel 不再输出 `源端可空 / 目标端可空 / 可空状态`
+  - 汇总 Excel 不再输出 `可空状态`，也不会生成 `可空明细`
+
 `汇总` sheet 会把信息集中排版在一个页签里，包含：
 - 视图 schema 划分
 - 5 种比对类型的简单概况与占比
@@ -166,6 +174,8 @@ Gradle 已内置常用 JDBC 驱动：
 - `可空状态`
 - `风险等级`
 - `差异分类`
+
+其中 `默认值状态 / 可空状态` 仅在对应比对项开启时才会出现。
 
 5 类 detail 现在拆成独立 sheet，便于大数据量查看：
 - `字段存在明细`
