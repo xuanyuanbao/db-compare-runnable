@@ -117,6 +117,60 @@ public final class TableCompareServiceTest {
                 "source-only table rows should be downgraded to info diff rows when configured");
         TestSupport.assertEquals(ComparisonStatus.MATCH, recordOf(tableInfoComparison.getColumnRecords(), "ONLY_SRC").getOverallStatus(),
                 "source-only table rows should not affect the overall status when the switch is disabled");
+
+        CompareOptions attributeInfoOptions = new CompareOptions();
+        attributeInfoOptions.setCompareDefaultValue(true);
+        attributeInfoOptions.setCompareNullable(true);
+        attributeInfoOptions.setTypeMismatchAffectResult(false);
+        attributeInfoOptions.setLengthMismatchAffectResult(false);
+        attributeInfoOptions.setDefaultMismatchAffectResult(false);
+        attributeInfoOptions.setNullableMismatchAffectResult(false);
+
+        TableMeta sourceAttributeInfoTable = new TableMeta("ATTR_INFO");
+        sourceAttributeInfoTable.getColumns().put("ATTR_COL", column("ATTR_COL", "CHARACTER", "12", "NO", "'SRC'"));
+
+        TableMeta targetAttributeInfoTable = new TableMeta("ATTR_INFO");
+        targetAttributeInfoTable.getColumns().put("ATTR_COL", column("ATTR_COL", "INTEGER", "18", "YES", "'TGT'"));
+
+        TableComparisonResult attributeInfoComparison = service.compareDetailed(sourceInfo, "LEGACY_A", sourceAttributeInfoTable, "T_AS400_A", targetAttributeInfoTable, attributeInfoOptions);
+        ColumnComparisonRecord attributeInfoRecord = recordOf(attributeInfoComparison.getColumnRecords(), "ATTR_COL");
+        TestSupport.assertEquals(0, attributeInfoComparison.getMainDiffs().size(),
+                "attribute mismatches should become info diffs when all attribute affect-result switches are disabled");
+        TestSupport.assertEquals(4, attributeInfoComparison.getInfoDiffs().size(),
+                "attribute mismatches should still be emitted when downgraded to info diffs");
+        TestSupport.assertEquals(DiffGroup.INFO, attributeInfoRecord.getDiffGroup(),
+                "attribute-only info rows should be marked as info diff rows");
+        TestSupport.assertEquals(ComparisonStatus.MATCH, attributeInfoRecord.getOverallStatus(),
+                "attribute-only info rows should not affect the overall row status");
+        TestSupport.assertEquals(ComparisonStatus.MISMATCH, attributeInfoRecord.getTypeStatus(),
+                "type status should still show the attribute mismatch itself");
+        TestSupport.assertEquals(ComparisonStatus.MISMATCH, attributeInfoRecord.getLengthStatus(),
+                "length status should still show the attribute mismatch itself");
+        TestSupport.assertEquals(ComparisonStatus.MISMATCH, attributeInfoRecord.getDefaultStatus(),
+                "default status should still show the attribute mismatch itself");
+        TestSupport.assertEquals(ComparisonStatus.MISMATCH, attributeInfoRecord.getNullableStatus(),
+                "nullable status should still show the attribute mismatch itself");
+
+        CompareOptions mixedAttributeOptions = new CompareOptions();
+        mixedAttributeOptions.setTypeMismatchAffectResult(true);
+        mixedAttributeOptions.setLengthMismatchAffectResult(false);
+
+        TableMeta sourceMixedAttributeTable = new TableMeta("ATTR_MIXED");
+        sourceMixedAttributeTable.getColumns().put("ATTR_COL", column("ATTR_COL", "CHARACTER", "12", "NO", null));
+
+        TableMeta targetMixedAttributeTable = new TableMeta("ATTR_MIXED");
+        targetMixedAttributeTable.getColumns().put("ATTR_COL", column("ATTR_COL", "INTEGER", "18", "NO", null));
+
+        TableComparisonResult mixedAttributeComparison = service.compareDetailed(sourceInfo, "LEGACY_A", sourceMixedAttributeTable, "T_AS400_A", targetMixedAttributeTable, mixedAttributeOptions);
+        ColumnComparisonRecord mixedAttributeRecord = recordOf(mixedAttributeComparison.getColumnRecords(), "ATTR_COL");
+        TestSupport.assertEquals(1, mixedAttributeComparison.getMainDiffs().size(),
+                "type mismatches should stay in main diffs when their affect-result switch remains enabled");
+        TestSupport.assertEquals(1, mixedAttributeComparison.getInfoDiffs().size(),
+                "length mismatches should be downgraded independently when their affect-result switch is disabled");
+        TestSupport.assertEquals(DiffGroup.MAIN, mixedAttributeRecord.getDiffGroup(),
+                "mixed rows should stay in the main diff group when at least one mismatch still affects the result");
+        TestSupport.assertEquals(ComparisonStatus.MISMATCH, mixedAttributeRecord.getOverallStatus(),
+                "mixed rows should remain mismatches when any enabled attribute mismatch is present");
     }
 
     private static ColumnMeta column(String name, String type, String length, String nullable, String defaultValue) {

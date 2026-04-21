@@ -211,91 +211,70 @@ public class TableCompareService {
         record.setSourceColumnExists(true);
         record.setTargetColumnExists(true);
 
-        List<String> messages = new ArrayList<>();
-        List<String> diffTypes = new ArrayList<>();
-        DiffGroup diffGroup = DiffGroup.MAIN;
+        RowDiffAccumulator accumulator = new RowDiffAccumulator();
 
         String sourceType = normalizeType(sourceInfo.getType(), sourceColumn, options);
         String targetType = normalizeType(DatabaseType.GAUSS, targetColumn, options);
         record.setSourceType(sourceType);
         record.setTargetType(targetType);
-        applyOptionalAttributeComparison(record::setTypeStatus, options.isCompareType(), Objects.equals(sourceType, targetType),
-                DiffType.COLUMN_TYPE_MISMATCH, "Type mismatch", diffTypes, messages, result,
+        applyOptionalAttributeComparison(record::setTypeStatus, options.isCompareType(), options.isTypeMismatchAffectResult(),
+                Objects.equals(sourceType, targetType), DiffType.COLUMN_TYPE_MISMATCH, "Type mismatch", accumulator, result,
                 sourceInfo, sourceSchema, sourceTableName, targetSchema, targetTableName, columnName,
-                sourceType, targetType, diffGroup);
+                sourceType, targetType);
 
         String sourceLength = normalizeLength(sourceColumn.getLength());
         String targetLength = normalizeLength(targetColumn.getLength());
         record.setSourceLength(sourceLength);
         record.setTargetLength(targetLength);
-        applyOptionalAttributeComparison(record::setLengthStatus, options.isCompareLength(), Objects.equals(sourceLength, targetLength),
-                DiffType.COLUMN_LENGTH_MISMATCH, "Length mismatch", diffTypes, messages, result,
+        applyOptionalAttributeComparison(record::setLengthStatus, options.isCompareLength(), options.isLengthMismatchAffectResult(),
+                Objects.equals(sourceLength, targetLength), DiffType.COLUMN_LENGTH_MISMATCH, "Length mismatch", accumulator, result,
                 sourceInfo, sourceSchema, sourceTableName, targetSchema, targetTableName, columnName,
-                sourceLength, targetLength, diffGroup);
+                sourceLength, targetLength);
 
         String sourceDefault = DefaultValueNormalizer.normalize(sourceColumn.getDefaultValue());
         String targetDefault = DefaultValueNormalizer.normalize(targetColumn.getDefaultValue());
         record.setSourceDefaultValue(sourceDefault);
         record.setTargetDefaultValue(targetDefault);
-        applyOptionalAttributeComparison(record::setDefaultStatus, options.isCompareDefaultValue(), Objects.equals(sourceDefault, targetDefault),
-                DiffType.COLUMN_DEFAULT_MISMATCH, "Default value mismatch", diffTypes, messages, result,
+        applyOptionalAttributeComparison(record::setDefaultStatus, options.isCompareDefaultValue(), options.isDefaultMismatchAffectResult(),
+                Objects.equals(sourceDefault, targetDefault), DiffType.COLUMN_DEFAULT_MISMATCH, "Default value mismatch", accumulator, result,
                 sourceInfo, sourceSchema, sourceTableName, targetSchema, targetTableName, columnName,
-                sourceDefault, targetDefault, diffGroup);
+                sourceDefault, targetDefault);
 
         String sourceNullable = normalizeNullable(sourceColumn.getNullable());
         String targetNullable = normalizeNullable(targetColumn.getNullable());
         record.setSourceNullable(sourceNullable);
         record.setTargetNullable(targetNullable);
-        applyOptionalAttributeComparison(record::setNullableStatus, options.isCompareNullable(), Objects.equals(sourceNullable, targetNullable),
-                DiffType.COLUMN_NULLABLE_MISMATCH, "Nullable mismatch", diffTypes, messages, result,
+        applyOptionalAttributeComparison(record::setNullableStatus, options.isCompareNullable(), options.isNullableMismatchAffectResult(),
+                Objects.equals(sourceNullable, targetNullable), DiffType.COLUMN_NULLABLE_MISMATCH, "Nullable mismatch", accumulator, result,
                 sourceInfo, sourceSchema, sourceTableName, targetSchema, targetTableName, columnName,
-                sourceNullable, targetNullable, diffGroup);
+                sourceNullable, targetNullable);
 
-        if (diffTypes.isEmpty()) {
+        if (accumulator.isEmpty()) {
             record.setOverallStatus(ComparisonStatus.MATCH);
             record.setDiffTypes("");
             record.setMessage(MATCH_MESSAGE);
-        } else {
+            record.setDiffGroup(DiffGroup.MAIN);
+        } else if (accumulator.hasMainDiff()) {
             record.setOverallStatus(ComparisonStatus.MISMATCH);
-            record.setDiffTypes(String.join("|", diffTypes));
-            record.setMessage(String.join("; ", messages));
+            record.setDiffTypes(accumulator.diffTypesText());
+            record.setMessage(accumulator.messageText());
+            record.setDiffGroup(DiffGroup.MAIN);
+        } else {
+            record.setOverallStatus(ComparisonStatus.MATCH);
+            record.setDiffTypes(accumulator.diffTypesText());
+            record.setMessage(accumulator.messageText());
+            record.setDiffGroup(DiffGroup.INFO);
         }
-        record.setDiffGroup(diffGroup);
         return record;
-    }
-
-    private void applyAttributeComparison(StatusConsumer statusConsumer,
-                                          boolean matched,
-                                          DiffType diffType,
-                                          String message,
-                                          List<String> diffTypes,
-                                          List<String> messages,
-                                          TableComparisonResult result,
-                                          DataSourceInfo sourceInfo,
-                                          String sourceSchema,
-                                          String sourceTableName,
-                                          String targetSchema,
-                                          String targetTableName,
-                                          String columnName,
-                                          String sourceValue,
-                                          String targetValue,
-                                          DiffGroup diffGroup) {
-        statusConsumer.accept(matched ? ComparisonStatus.MATCH : ComparisonStatus.MISMATCH);
-        if (!matched) {
-            diffTypes.add(diffType.name());
-            messages.add(message);
-            result.addDiff(buildColumnDiff(sourceInfo.getSourceName(), sourceSchema, sourceTableName, targetSchema,
-                    targetTableName, columnName, diffType, sourceValue, targetValue, message, diffGroup));
-        }
     }
 
     private void applyOptionalAttributeComparison(StatusConsumer statusConsumer,
                                                   boolean enabled,
+                                                  boolean affectsResult,
                                                   boolean matched,
                                                   DiffType diffType,
                                                   String message,
-                                                  List<String> diffTypes,
-                                                  List<String> messages,
+                                                  RowDiffAccumulator accumulator,
                                                   TableComparisonResult result,
                                                   DataSourceInfo sourceInfo,
                                                   String sourceSchema,
@@ -304,14 +283,18 @@ public class TableCompareService {
                                                   String targetTableName,
                                                   String columnName,
                                                   String sourceValue,
-                                                  String targetValue,
-                                                  DiffGroup diffGroup) {
+                                                  String targetValue) {
         if (!enabled) {
             statusConsumer.accept(ComparisonStatus.NOT_APPLICABLE);
             return;
         }
-        applyAttributeComparison(statusConsumer, matched, diffType, message, diffTypes, messages, result,
-                sourceInfo, sourceSchema, sourceTableName, targetSchema, targetTableName, columnName, sourceValue, targetValue, diffGroup);
+        statusConsumer.accept(matched ? ComparisonStatus.MATCH : ComparisonStatus.MISMATCH);
+        if (matched) {
+            return;
+        }
+        accumulator.record(diffType, message, affectsResult);
+        result.addDiff(buildColumnDiff(sourceInfo.getSourceName(), sourceSchema, sourceTableName, targetSchema,
+                targetTableName, columnName, diffType, sourceValue, targetValue, message, affectsResult ? DiffGroup.MAIN : DiffGroup.INFO));
     }
 
     private ColumnComparisonRecord buildMissingColumnRow(DataSourceInfo sourceInfo,
@@ -464,5 +447,35 @@ public class TableCompareService {
     @FunctionalInterface
     private interface StatusConsumer {
         void accept(ComparisonStatus status);
+    }
+
+    private static final class RowDiffAccumulator {
+        private final List<String> diffTypes = new ArrayList<>();
+        private final List<String> messages = new ArrayList<>();
+        private boolean hasMainDiff;
+
+        private void record(DiffType diffType, String message, boolean affectsResult) {
+            diffTypes.add(diffType.name());
+            messages.add(message);
+            if (affectsResult) {
+                hasMainDiff = true;
+            }
+        }
+
+        private boolean isEmpty() {
+            return diffTypes.isEmpty();
+        }
+
+        private boolean hasMainDiff() {
+            return hasMainDiff;
+        }
+
+        private String diffTypesText() {
+            return String.join("|", diffTypes);
+        }
+
+        private String messageText() {
+            return String.join("; ", messages);
+        }
     }
 }

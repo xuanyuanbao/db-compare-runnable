@@ -89,6 +89,14 @@ Gradle 已内置常用 JDBC 驱动：
 - `dbcompare.options.compare-length`
 - `dbcompare.options.source-column-missing-in-target-affect-result`
   - 控制“源有目标无字段”是否影响最终结果
+- `dbcompare.options.type-mismatch-affect-result`
+  - 控制“类型不一致”是否影响最终结果
+- `dbcompare.options.length-mismatch-affect-result`
+  - 控制“长度不一致”是否影响最终结果
+- `dbcompare.options.default-mismatch-affect-result`
+  - 控制“默认值不一致”是否影响最终结果
+- `dbcompare.options.nullable-mismatch-affect-result`
+  - 控制“可空不一致”是否影响最终结果
 - `dbcompare.options.type-mappings.*`
   - 自定义类型映射，例如 `date=DATE,TIMESTAMP`
 - `dbcompare.output.csv-path`
@@ -178,6 +186,17 @@ Gradle 已内置常用 JDBC 驱动：
 - 不影响 `diffCount`
 - 不影响表级状态
 - 明细里仍会保留对应记录，便于人工查看
+
+同样的规则也适用于属性类差异：
+- `dbcompare.options.type-mismatch-affect-result`
+- `dbcompare.options.length-mismatch-affect-result`
+- `dbcompare.options.default-mismatch-affect-result`
+- `dbcompare.options.nullable-mismatch-affect-result`
+
+这些开关允许把“类型 / 长度 / 默认值 / 可空”做成：
+- 继续参与比对和明细输出
+- 但可以按需降级为信息差异
+- 降级后不影响 `diffCount`、表级状态、风险等级和汇总统计
 
 `表级状态` sheet 输出表级汇总结果，字段包括：
 - `源数据库`

@@ -35,6 +35,10 @@ compare-options:
   check-default: false
   check-nullable: false
   source-column-missing-in-target-affect-result: false
+  type-mismatch-affect-result: true
+  length-mismatch-affect-result: true
+  default-mismatch-affect-result: true
+  nullable-mismatch-affect-result: true
 
 ---
 
@@ -67,6 +71,10 @@ for each column in table:
 
 compare-options:
   source-column-missing-in-target-affect-result: true | false
+  type-mismatch-affect-result: true | false
+  length-mismatch-affect-result: true | false
+  default-mismatch-affect-result: true | false
+  nullable-mismatch-affect-result: true | false
 
 规则如下：
 - `true`
@@ -91,8 +99,10 @@ compare-options:
 | 项目 | 是否校验 | 是否影响结果 |
 |------|----------|--------------|
 | view字段缺失 | ✅ | ✅ |
-| 类型不一致 | ✅ | ✅ |
-| 长度不一致 | ✅ | ✅ |
+| 类型不一致 | ✅ | 由开关控制 |
+| 长度不一致 | ✅ | 由开关控制 |
+| 默认值不一致 | 按配置启用 | 由开关控制 |
+| 可空不一致 | 按配置启用 | 由开关控制 |
 | 源有目标无字段 | ✅ | 由开关控制 |
 
 ---
@@ -118,8 +128,10 @@ view-batch:
 | 类型 | 是否影响结果 |
 |------|--------------|
 | MISSING_COLUMN | 是 |
-| TYPE_MISMATCH | 是 |
-| LENGTH_MISMATCH | 是 |
+| TYPE_MISMATCH | 由开关控制 |
+| LENGTH_MISMATCH | 由开关控制 |
+| DEFAULT_MISMATCH | 由开关控制 |
+| NULLABLE_MISMATCH | 由开关控制 |
 | SOURCE_COLUMN_MISSING_IN_TARGET | 由开关控制 |
 | VIEW_MISSING_COLUMN_INFO | 否（兼容旧口径时保留） |
 
@@ -141,12 +153,19 @@ compare-options:
   table-extra-columns-affect-result: false
   table-extra-columns-risk-level: LOW
   source-column-missing-in-target-affect-result: false
+  type-mismatch-affect-result: true
+  length-mismatch-affect-result: true
+  default-mismatch-affect-result: true
+  nullable-mismatch-affect-result: true
 
 说明：
 - 当 `source-column-missing-in-target-affect-result=false` 时，
   “源有目标无字段”按信息类差异处理
 - 当 `source-column-missing-in-target-affect-result=true` 时，
   “源有目标无字段”按主差异处理
+- 当 `type-mismatch-affect-result=false`、`length-mismatch-affect-result=false`、
+  `default-mismatch-affect-result=false` 或 `nullable-mismatch-affect-result=false` 时，
+  对应属性差异继续展示，但按信息类差异处理
 
 ---
 
@@ -156,6 +175,7 @@ compare-options:
 - 支持批次控制
 - 主差异与信息差异分离
 - “源有目标无字段”支持开关控制是否影响全局结果
+- “类型 / 长度 / 默认值 / 可空”支持独立开关控制是否影响全局结果
 - 性能提升明显
 
 ---

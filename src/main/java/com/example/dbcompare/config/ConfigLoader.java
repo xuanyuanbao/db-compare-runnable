@@ -75,6 +75,26 @@ public class ConfigLoader {
                         "compare.options.sourceColumnMissingInTargetAffectResult",
                         "compare.options.source-column-missing-in-target-affect-result"),
                 false));
+        config.getOptions().setTypeMismatchAffectResult(boolValue(properties,
+                firstPresentKey(properties,
+                        "compare.options.typeMismatchAffectResult",
+                        "compare.options.type-mismatch-affect-result"),
+                true));
+        config.getOptions().setLengthMismatchAffectResult(boolValue(properties,
+                firstPresentKey(properties,
+                        "compare.options.lengthMismatchAffectResult",
+                        "compare.options.length-mismatch-affect-result"),
+                true));
+        config.getOptions().setDefaultMismatchAffectResult(boolValue(properties,
+                firstPresentKey(properties,
+                        "compare.options.defaultMismatchAffectResult",
+                        "compare.options.default-mismatch-affect-result"),
+                true));
+        config.getOptions().setNullableMismatchAffectResult(boolValue(properties,
+                firstPresentKey(properties,
+                        "compare.options.nullableMismatchAffectResult",
+                        "compare.options.nullable-mismatch-affect-result"),
+                true));
         config.getOptions().setSourceLoadThreads(intValue(properties, "compare.options.sourceLoadThreads", 4));
         config.getOptions().setObjectType(enumValue(properties, CompareObjectType.class, CompareObjectType.TABLE,
                 "compare.options.objectType", "compare.options.object-type"));

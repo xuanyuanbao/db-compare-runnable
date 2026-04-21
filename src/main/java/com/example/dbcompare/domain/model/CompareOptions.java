@@ -15,6 +15,10 @@ public class CompareOptions {
     private boolean compareDefaultValue = false;
     private boolean compareLength = true;
     private boolean sourceColumnMissingInTargetAffectResult = false;
+    private boolean typeMismatchAffectResult = true;
+    private boolean lengthMismatchAffectResult = true;
+    private boolean defaultMismatchAffectResult = true;
+    private boolean nullableMismatchAffectResult = true;
     private int sourceLoadThreads = 4;
     private CompareObjectType objectType = CompareObjectType.TABLE;
     private CompareRelationMode relationMode = CompareRelationMode.TABLE_TO_TABLE;
@@ -33,6 +37,22 @@ public class CompareOptions {
     public boolean isSourceColumnMissingInTargetAffectResult() { return sourceColumnMissingInTargetAffectResult; }
     public void setSourceColumnMissingInTargetAffectResult(boolean sourceColumnMissingInTargetAffectResult) {
         this.sourceColumnMissingInTargetAffectResult = sourceColumnMissingInTargetAffectResult;
+    }
+    public boolean isTypeMismatchAffectResult() { return typeMismatchAffectResult; }
+    public void setTypeMismatchAffectResult(boolean typeMismatchAffectResult) {
+        this.typeMismatchAffectResult = typeMismatchAffectResult;
+    }
+    public boolean isLengthMismatchAffectResult() { return lengthMismatchAffectResult; }
+    public void setLengthMismatchAffectResult(boolean lengthMismatchAffectResult) {
+        this.lengthMismatchAffectResult = lengthMismatchAffectResult;
+    }
+    public boolean isDefaultMismatchAffectResult() { return defaultMismatchAffectResult; }
+    public void setDefaultMismatchAffectResult(boolean defaultMismatchAffectResult) {
+        this.defaultMismatchAffectResult = defaultMismatchAffectResult;
+    }
+    public boolean isNullableMismatchAffectResult() { return nullableMismatchAffectResult; }
+    public void setNullableMismatchAffectResult(boolean nullableMismatchAffectResult) {
+        this.nullableMismatchAffectResult = nullableMismatchAffectResult;
     }
     public int getSourceLoadThreads() { return sourceLoadThreads; }
     public void setSourceLoadThreads(int sourceLoadThreads) { this.sourceLoadThreads = sourceLoadThreads; }
