@@ -32,12 +32,23 @@ import java.util.function.Predicate;
 public class SummaryExcelReportWriter {
     private static final String SUMMARY_SHEET_NAME = "汇总";
     private static final String TABLE_STATUS_SHEET_NAME = "表级状态";
+    private static final String TYPE_LENGTH_SUMMARY_SHEET_NAME = "类型长度联合汇总";
     private static final String FIELD_EXISTENCE_DETAIL_SHEET_NAME = "字段存在明细";
     private static final String TYPE_DETAIL_SHEET_NAME = "类型明细";
     private static final String LENGTH_DETAIL_SHEET_NAME = "长度明细";
     private static final String DEFAULT_DETAIL_SHEET_NAME = "默认值明细";
     private static final String NULLABLE_DETAIL_SHEET_NAME = "可空明细";
     private static final String[] DETAIL_HEADERS = {"源数据库", "源Schema", "源表", "目标Schema", "目标对象", "字段名", "差异类型", "说明"};
+    private static final List<String> TYPE_LENGTH_CODES = List.of(
+            "MATCH",
+            "TYPE_MISMATCH",
+            "TARGET_LENGTH_LONGER",
+            "TARGET_LENGTH_SHORTER",
+            "MISSING_SOURCE",
+            "MISSING_TARGET",
+            "LENGTH_MISMATCH",
+            "NOT_APPLICABLE"
+    );
 
     public SummaryExcelReportSession open(Path path, CompareOptions options) {
         try {
@@ -94,6 +105,7 @@ public class SummaryExcelReportWriter {
         public void close() throws IOException {
             renderSummarySheet();
             renderTableStatusSheet();
+            renderTypeLengthSummarySheet();
             renderDetailSheet(FIELD_EXISTENCE_DETAIL_SHEET_NAME, this::isFieldExistenceRecord);
             renderDetailSheet(TYPE_DETAIL_SHEET_NAME, record -> containsDiff(record, DiffType.COLUMN_TYPE_MISMATCH));
             renderDetailSheet(LENGTH_DETAIL_SHEET_NAME, record -> containsDiff(record, DiffType.COLUMN_LENGTH_MISMATCH));
@@ -142,6 +154,7 @@ public class SummaryExcelReportWriter {
             metrics.add(new String[]{"不完全存在表数", Integer.toString(countStatus(TableStats::fieldExistenceStatus, "NOT_FULL_EXISTS"))});
             metrics.add(new String[]{"类型不一致表数", Integer.toString(countStatus(TableStats::typeStatus, "TYPE_MISMATCH"))});
             metrics.add(new String[]{"长度不一致表数", Integer.toString(countStatus(TableStats::lengthStatus, "LENGTH_MISMATCH"))});
+            metrics.add(new String[]{"联合判断异常表数", Integer.toString(countCombinedIssueTables())});
             if (options.isCompareDefaultValue()) {
                 metrics.add(new String[]{"默认值不一致表数", Integer.toString(countStatus(TableStats::defaultStatus, "DEFAULT_MISMATCH"))});
             }
@@ -178,7 +191,7 @@ public class SummaryExcelReportWriter {
 
         private void renderTableStatusSheet() {
             SXSSFSheet sheet = workbook.createSheet(TABLE_STATUS_SHEET_NAME);
-            List<String> headers = new ArrayList<>(List.of("源数据库", "源Schema", "源表", "目标Schema", "目标对象", "字段存在状态", "类型状态", "长度状态"));
+            List<String> headers = new ArrayList<>(List.of("源数据库", "源Schema", "源表", "目标Schema", "目标对象", "字段存在状态", "类型状态", "长度状态", "类型长度联合结论"));
             if (options.isCompareDefaultValue()) {
                 headers.add("默认值状态");
             }
@@ -201,6 +214,7 @@ public class SummaryExcelReportWriter {
                 writeCell(row, col++, OutputTextFormatter.summaryStatusText(stats.fieldExistenceStatus()), styleForStatus(stats.fieldExistenceStatus()));
                 writeCell(row, col++, OutputTextFormatter.summaryStatusText(stats.typeStatus()), styleForStatus(stats.typeStatus()));
                 writeCell(row, col++, OutputTextFormatter.summaryStatusText(stats.lengthStatus()), styleForStatus(stats.lengthStatus()));
+                writeCell(row, col++, OutputTextFormatter.summaryStatusText(stats.typeLengthConclusion()), styleForStatus(stats.typeLengthConclusion()));
                 if (options.isCompareDefaultValue()) {
                     writeCell(row, col++, OutputTextFormatter.summaryStatusText(stats.defaultStatus()), styleForStatus(stats.defaultStatus()));
                 }
@@ -210,6 +224,42 @@ public class SummaryExcelReportWriter {
                 writeCell(row, col++, OutputTextFormatter.summaryStatusText(stats.riskLevel()), styleForStatus(stats.riskLevel()));
                 writeCell(row, col, OutputTextFormatter.summaryStatusText(stats.diffCategory()), styleForStatus(stats.diffCategory()));
             }
+        }
+
+        private void renderTypeLengthSummarySheet() {
+            SXSSFSheet sheet = workbook.createSheet(TYPE_LENGTH_SUMMARY_SHEET_NAME);
+            List<String> headers = List.of(
+                    "源数据库", "源Schema", "源表", "目标Schema", "目标对象", "字段总数",
+                    "联合判断一致数", "联合判断类型不一致数", "联合判断目标长度大于源长度数",
+                    "联合判断目标长度小于源长度数", "联合判断缺少源字段数", "联合判断缺少目标字段数",
+                    "联合判断其他长度差异数", "表级联合判断结论"
+            );
+            writeHeaders(sheet, 0, 0, headers);
+
+            int rowIndex = 1;
+            for (TableStats stats : sortedTableStats()) {
+                Row row = row(sheet, rowIndex++);
+                int col = 0;
+                writeCell(row, col++, stats.sourceDatabaseName, null);
+                writeCell(row, col++, stats.sourceSchemaName, null);
+                writeCell(row, col++, stats.sourceTableName, null);
+                writeCell(row, col++, stats.targetSchemaName, null);
+                writeCell(row, col++, stats.targetTableName, null);
+                writeCell(row, col++, Integer.toString(stats.totalColumns()), neutralStyle);
+                writeCell(row, col++, Integer.toString(stats.typeLengthCount("MATCH")), styleForStatus("MATCH"));
+                writeCell(row, col++, Integer.toString(stats.typeLengthCount("TYPE_MISMATCH")), styleForStatus("TYPE_MISMATCH"));
+                writeCell(row, col++, Integer.toString(stats.typeLengthCount("TARGET_LENGTH_LONGER")), styleForStatus("TARGET_LENGTH_LONGER"));
+                writeCell(row, col++, Integer.toString(stats.typeLengthCount("TARGET_LENGTH_SHORTER")), styleForStatus("TARGET_LENGTH_SHORTER"));
+                writeCell(row, col++, Integer.toString(stats.typeLengthCount("MISSING_SOURCE")), styleForStatus("MISSING_SOURCE"));
+                writeCell(row, col++, Integer.toString(stats.typeLengthCount("MISSING_TARGET")), styleForStatus("MISSING_TARGET"));
+                writeCell(row, col++, Integer.toString(stats.typeLengthCount("LENGTH_MISMATCH")), styleForStatus("LENGTH_MISMATCH"));
+                writeCell(row, col, OutputTextFormatter.summaryStatusText(stats.typeLengthConclusion()), styleForStatus(stats.typeLengthConclusion()));
+            }
+            for (int index = 0; index < headers.size(); index++) {
+                sheet.setColumnWidth(index, (index < 5 ? 18 : 16) * 256);
+            }
+            sheet.createFreezePane(0, 1);
+            sheet.setAutoFilter(new CellRangeAddress(0, Math.max(1, rowIndex - 1), 0, headers.size() - 1));
         }
 
         private void renderDetailSheet(String sheetName, Predicate<ColumnComparisonRecord> predicate) {
@@ -260,6 +310,16 @@ public class SummaryExcelReportWriter {
             int count = 0;
             for (TableStats stats : tableStats.values()) {
                 if (expected.equals(resolver.apply(stats))) {
+                    count++;
+                }
+            }
+            return count;
+        }
+
+        private int countCombinedIssueTables() {
+            int count = 0;
+            for (TableStats stats : tableStats.values()) {
+                if (!"MATCH".equals(stats.typeLengthConclusion())) {
                     count++;
                 }
             }
@@ -396,10 +456,12 @@ public class SummaryExcelReportWriter {
                 return neutralStyle;
             }
             String normalized = status.toUpperCase();
-            if (normalized.endsWith("_MATCH") || normalized.equals("FULL_EXISTS") || normalized.equals("FULL_MATCH") || normalized.equals("LOW") || normalized.equals("MATCH")) {
+            if (normalized.endsWith("_MATCH") || normalized.equals("FULL_EXISTS") || normalized.equals("FULL_MATCH")
+                    || normalized.equals("LOW") || normalized.equals("MATCH")) {
                 return positiveStyle;
             }
-            if (normalized.contains("MISSING") || normalized.contains("NOT_FULL_EXISTS") || normalized.contains("TYPE_MISMATCH") || normalized.equals("HIGH")) {
+            if (normalized.contains("MISSING") || normalized.contains("NOT_FULL_EXISTS") || normalized.contains("TYPE_MISMATCH")
+                    || normalized.equals("HIGH") || normalized.equals("PRESENCE_ISSUE") || normalized.equals("TARGET_LENGTH_TIGHTER")) {
                 return highStyle;
             }
             return mediumStyle;
@@ -470,12 +532,14 @@ public class SummaryExcelReportWriter {
         private final String targetSchemaName;
         private final String targetTableName;
         private final java.util.EnumSet<DiffType> diffTypes = java.util.EnumSet.noneOf(DiffType.class);
+        private final Map<String, Integer> typeLengthCounts = new LinkedHashMap<>();
         private boolean mismatch;
         private boolean fullExists = true;
         private boolean typeMismatch;
         private boolean lengthMismatch;
         private boolean defaultMismatch;
         private boolean nullableMismatch;
+        private int totalColumns;
 
         private TableStats(ColumnComparisonRecord record) {
             this.sourceDatabaseName = safe(record.getSourceDatabaseName());
@@ -483,9 +547,17 @@ public class SummaryExcelReportWriter {
             this.sourceTableName = safe(record.getSourceTableName());
             this.targetSchemaName = safe(record.getTargetSchemaName());
             this.targetTableName = safe(record.getTargetTableName());
+            for (String code : TYPE_LENGTH_CODES) {
+                typeLengthCounts.put(code, 0);
+            }
         }
 
         private void accept(ColumnComparisonRecord record) {
+            totalColumns++;
+            String combinedStatus = record.getTypeLengthCombinedStatus();
+            if (combinedStatus != null && !combinedStatus.isBlank()) {
+                typeLengthCounts.merge(combinedStatus, 1, Integer::sum);
+            }
             if (record.isAffectsResult() && record.getOverallStatus() == ComparisonStatus.MISMATCH) {
                 mismatch = true;
             }
@@ -520,11 +592,52 @@ public class SummaryExcelReportWriter {
             }
         }
 
-        private String fieldExistenceStatus() { return fullExists ? "FULL_EXISTS" : "NOT_FULL_EXISTS"; }
-        private String typeStatus() { return typeMismatch ? "TYPE_MISMATCH" : "TYPE_MATCH"; }
-        private String lengthStatus() { return lengthMismatch ? "LENGTH_MISMATCH" : "LENGTH_MATCH"; }
-        private String defaultStatus() { return defaultMismatch ? "DEFAULT_MISMATCH" : "DEFAULT_MATCH"; }
-        private String nullableStatus() { return nullableMismatch ? "NULLABLE_MISMATCH" : "NULLABLE_MATCH"; }
+        private int totalColumns() {
+            return totalColumns;
+        }
+
+        private int typeLengthCount(String code) {
+            return typeLengthCounts.getOrDefault(code, 0);
+        }
+
+        private String typeLengthConclusion() {
+            if (typeLengthCount("MISSING_SOURCE") > 0 || typeLengthCount("MISSING_TARGET") > 0) {
+                return "PRESENCE_ISSUE";
+            }
+            if (typeLengthCount("TYPE_MISMATCH") > 0) {
+                return "TYPE_MISMATCH";
+            }
+            if (typeLengthCount("TARGET_LENGTH_SHORTER") > 0 || typeLengthCount("LENGTH_MISMATCH") > 0) {
+                return "TARGET_LENGTH_TIGHTER";
+            }
+            if (typeLengthCount("TARGET_LENGTH_LONGER") > 0) {
+                return "TARGET_LENGTH_RELAXED";
+            }
+            if (typeLengthCount("MATCH") > 0) {
+                return "MATCH";
+            }
+            return "NO_DATA";
+        }
+
+        private String fieldExistenceStatus() {
+            return fullExists ? "FULL_EXISTS" : "NOT_FULL_EXISTS";
+        }
+
+        private String typeStatus() {
+            return typeMismatch ? "TYPE_MISMATCH" : "TYPE_MATCH";
+        }
+
+        private String lengthStatus() {
+            return lengthMismatch ? "LENGTH_MISMATCH" : "LENGTH_MATCH";
+        }
+
+        private String defaultStatus() {
+            return defaultMismatch ? "DEFAULT_MISMATCH" : "DEFAULT_MATCH";
+        }
+
+        private String nullableStatus() {
+            return nullableMismatch ? "NULLABLE_MISMATCH" : "NULLABLE_MATCH";
+        }
 
         private String diffCategory() {
             if (!mismatch) {

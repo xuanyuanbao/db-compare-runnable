@@ -1,7 +1,8 @@
 param(
     [string]$OutputDir = "examples/demo-final-large",
     [int]$SchemaCount = 12,
-    [int]$ViewsPerSchema = 18
+    [int]$ViewsPerSchema = 18,
+    [int]$Seed = 20260423
 )
 
 Set-StrictMode -Version Latest
@@ -103,12 +104,12 @@ function Clone-Columns {
 function Get-ViewColumns {
     param(
         [object[]]$SourceColumns,
-        [int]$ScenarioIndex
+        [int]$ScenarioCode
     )
 
     $columns = @(Clone-Columns -Columns $SourceColumns)
 
-    switch ($ScenarioIndex % 8) {
+    switch ($ScenarioCode % 12) {
         0 {
             return $columns
         }
@@ -146,7 +147,7 @@ function Get-ViewColumns {
             $columns = @($columns | Where-Object { $_.columnName -notin @("INTERNAL_NOTE", "OPERATOR_REMARK", "MANUAL_COMMENT", "ARCHIVE_NOTE") })
             return $columns
         }
-        default {
+        7 {
             $columns = @($columns | Where-Object { $_.columnName -notin @("LEGACY_FLAG", "SYNC_TAG", "HISTORY_MARK", "SOURCE_TRACE") })
             $columns += @{
                 columnName   = "TARGET_ONLY_STATUS"
@@ -156,6 +157,37 @@ function Get-ViewColumns {
                 defaultValue = ""
             }
             $columns[2].length = [string]([int]$columns[2].length + 15)
+            return $columns
+        }
+        8 {
+            $columns[0].dataType = "NUMERIC"
+            $columns[0].length = "18"
+            $columns[3].dataType = "VARCHAR"
+            $columns[3].length = "12"
+            return $columns
+        }
+        9 {
+            $columns[2].length = [string]([int]$columns[2].length - 8)
+            $columns[4].dataType = "TIMESTAMP"
+            return $columns
+        }
+        10 {
+            $columns = @($columns | Where-Object { $_.columnName -notin @("LEGACY_FLAG", "SYNC_TAG", "HISTORY_MARK", "SOURCE_TRACE", "INTERNAL_NOTE", "OPERATOR_REMARK") })
+            $columns += @{
+                columnName   = "TARGET_ONLY_REMARK"
+                dataType     = "TEXT"
+                length       = "500"
+                nullable     = "YES"
+                defaultValue = ""
+            }
+            return $columns
+        }
+        default {
+            $columns[1].dataType = "VARCHAR"
+            $columns[1].length = [string]([int]$columns[1].length + 4)
+            $columns[2].dataType = "TEXT"
+            $columns[2].length = "500"
+            $columns = @($columns | Where-Object { $_.columnName -notin @("LEGACY_FLAG", "SOURCE_TRACE") })
             return $columns
         }
     }
@@ -172,6 +204,7 @@ $schemaMappings = New-Object System.Collections.Generic.List[object]
 $tableMappings = New-Object System.Collections.Generic.List[object]
 
 $sourceName = "DB2_A"
+$random = [System.Random]::new($Seed)
 
 for ($schemaIndex = 1; $schemaIndex -le $SchemaCount; $schemaIndex++) {
     $sourceSchema = "LEGACY_{0:D2}" -f $schemaIndex
@@ -194,7 +227,8 @@ for ($schemaIndex = 1; $schemaIndex -le $SchemaCount; $schemaIndex++) {
                     -Nullable $column.nullable -DefaultValue $column.defaultValue -OrdinalPosition ($columnIndex + 1)))
         }
 
-        $targetColumns = @(Get-ViewColumns -SourceColumns $sourceColumns -ScenarioIndex ($globalIndex - 1))
+        $scenarioCode = $random.Next(0, 12)
+        $targetColumns = @(Get-ViewColumns -SourceColumns $sourceColumns -ScenarioCode $scenarioCode)
         for ($columnIndex = 0; $columnIndex -lt $targetColumns.Count; $columnIndex++) {
             $column = $targetColumns[$columnIndex]
             $targetRows.Add((New-ColumnRow -DatabaseName "GAUSS_FINAL" -SchemaName $targetViewSchema -TableName $targetView `
@@ -214,12 +248,20 @@ for ($schemaIndex = 1; $schemaIndex -le $SchemaCount; $schemaIndex++) {
             targetTableSchema = "DWD_{0:D2}" -f $schemaIndex
             targetTable       = "{0}_DIM" -f $sourceTable
         })
-        if ($globalIndex % 3 -eq 0) {
+        if ($random.NextDouble() -lt 0.45) {
             $lineageRows.Add([pscustomobject]@{
                 targetViewSchema  = $targetViewSchema
                 targetView        = $targetView
                 targetTableSchema = "ADS_{0:D2}" -f $schemaIndex
                 targetTable       = "{0}_SUMMARY" -f $sourceTable
+            })
+        }
+        if ($random.NextDouble() -lt 0.20) {
+            $lineageRows.Add([pscustomobject]@{
+                targetViewSchema  = $targetViewSchema
+                targetView        = $targetView
+                targetTableSchema = "DM_{0:D2}" -f $schemaIndex
+                targetTable       = "{0}_WIDE" -f $sourceTable
             })
         }
 

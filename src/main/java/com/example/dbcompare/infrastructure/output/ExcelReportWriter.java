@@ -91,6 +91,7 @@ public class ExcelReportWriter {
         columns.add(new DetailColumn("源原始长度", 18, (row, record) -> row.write(record.getSourceLength(), null)));
         columns.add(new DetailColumn("目标原始长度", 18, (row, record) -> row.write(record.getTargetLength(), null)));
         columns.add(new DetailColumn("长度状态", 18, (row, record) -> row.write(statusText(record.getLengthStatus()), row.statusStyle(record))));
+        columns.add(new DetailColumn("类型长度联合判断", 24, (row, record) -> row.write(OutputTextFormatter.summaryStatusText(record.getTypeLengthCombinedStatus()), row.statusStyle(record))));
         if (options.isCompareDefaultValue()) {
             columns.add(new DetailColumn("源原始默认值", 24, (row, record) -> row.write(record.getSourceDefaultValue(), null)));
             columns.add(new DetailColumn("目标原始默认值", 24, (row, record) -> row.write(record.getTargetDefaultValue(), null)));

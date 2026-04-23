@@ -31,11 +31,12 @@ class ExcelReportWriterTest {
         try (InputStream inputStream = Files.newInputStream(output);
              XSSFWorkbook workbook = new XSSFWorkbook(inputStream)) {
             assertEquals("字段名", workbook.getSheetAt(0).getRow(0).getCell(5).getStringCellValue());
-            assertEquals("整体状态", workbook.getSheetAt(0).getRow(0).getCell(14).getStringCellValue());
-            assertEquals("差异分组", workbook.getSheetAt(0).getRow(0).getCell(15).getStringCellValue());
-            assertEquals("是否影响结果", workbook.getSheetAt(0).getRow(0).getCell(16).getStringCellValue());
-            assertEquals("说明", workbook.getSheetAt(0).getRow(0).getCell(18).getStringCellValue());
-            assertEquals(19, workbook.getSheetAt(0).getRow(0).getLastCellNum(), "detail excel should remove default/null related columns");
+            assertEquals("类型长度联合判断", workbook.getSheetAt(0).getRow(0).getCell(14).getStringCellValue());
+            assertEquals("整体状态", workbook.getSheetAt(0).getRow(0).getCell(15).getStringCellValue());
+            assertEquals("差异分组", workbook.getSheetAt(0).getRow(0).getCell(16).getStringCellValue());
+            assertEquals("是否影响结果", workbook.getSheetAt(0).getRow(0).getCell(17).getStringCellValue());
+            assertEquals("说明", workbook.getSheetAt(0).getRow(0).getCell(19).getStringCellValue());
+            assertEquals(20, workbook.getSheetAt(0).getRow(0).getLastCellNum(), "detail excel should remove default/null related columns but keep combined status");
             assertEquals("一致", workbook.getSheetAt(0).getRow(1).getCell(14).getStringCellValue());
             assertEquals("类型判等规则", workbook.getSheetAt(1).getSheetName());
         }
@@ -52,6 +53,7 @@ class ExcelReportWriterTest {
         record.setTargetType("VARCHAR");
         record.setSourceLength("16 OCTETS");
         record.setTargetLength("60");
+        record.setTypeLengthCombinedStatus("TARGET_LENGTH_LONGER");
 
         try (ExcelReportWriter.ExcelReportSession session = new ExcelReportWriter(10).open(output, options)) {
             session.append(List.of(record));
@@ -67,6 +69,7 @@ class ExcelReportWriterTest {
             assertEquals("VARCHAR", workbook.getSheetAt(0).getRow(1).getCell(9).getStringCellValue());
             assertEquals("16 OCTETS", workbook.getSheetAt(0).getRow(1).getCell(11).getStringCellValue());
             assertEquals("60", workbook.getSheetAt(0).getRow(1).getCell(12).getStringCellValue());
+            assertEquals("目标长度大于源长度", workbook.getSheetAt(0).getRow(1).getCell(14).getStringCellValue());
             assertEquals("原始类型集合", workbook.getSheet("类型判等规则").getRow(0).getCell(0).getStringCellValue());
             assertEquals("比较归一类型", workbook.getSheet("类型判等规则").getRow(0).getCell(1).getStringCellValue());
             assertEquals("判等说明", workbook.getSheet("类型判等规则").getRow(0).getCell(2).getStringCellValue());
@@ -85,6 +88,7 @@ class ExcelReportWriterTest {
         record.setColumnName(columnName);
         record.setSourceColumnExists(true);
         record.setTargetColumnExists(true);
+        record.setTypeLengthCombinedStatus("MATCH");
         record.setOverallStatus(ComparisonStatus.MATCH);
         record.setDiffGroup(DiffGroup.MAIN);
         return record;

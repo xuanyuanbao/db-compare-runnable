@@ -24,6 +24,14 @@ import java.util.Set;
 
 public class TableCompareService {
     private static final String MATCH_MESSAGE = "MATCH";
+    private static final String TYPE_LENGTH_NOT_APPLICABLE = "NOT_APPLICABLE";
+    private static final String TYPE_LENGTH_MISSING_SOURCE = "MISSING_SOURCE";
+    private static final String TYPE_LENGTH_MISSING_TARGET = "MISSING_TARGET";
+    private static final String TYPE_LENGTH_MATCH = "MATCH";
+    private static final String TYPE_LENGTH_TYPE_MISMATCH = "TYPE_MISMATCH";
+    private static final String TYPE_LENGTH_TARGET_LONGER = "TARGET_LENGTH_LONGER";
+    private static final String TYPE_LENGTH_TARGET_SHORTER = "TARGET_LENGTH_SHORTER";
+    private static final String TYPE_LENGTH_LENGTH_MISMATCH = "LENGTH_MISMATCH";
     private static final Set<String> TARGET_LONGER_IGNORABLE_LENGTH_TYPES = new HashSet<>(Arrays.asList(
             "CHAR", "VARCHAR", "GRAPHIC", "VARGRAPHIC"
     ));
@@ -243,6 +251,7 @@ public class TableCompareService {
                 Objects.equals(sourceLength, targetLength), DiffType.COLUMN_LENGTH_MISMATCH, "Length mismatch", accumulator, result,
                 sourceInfo, sourceSchema, sourceTableName, targetSchema, targetTableName, columnName,
                 sourceRawLength, targetRawLength);
+        record.setTypeLengthCombinedStatus(resolveTypeLengthCombinedStatus(true, true, sourceType, targetType, sourceRawLength, targetRawLength, options));
 
         String sourceRawDefault = sourceColumn.getDefaultValue();
         String targetRawDefault = targetColumn.getDefaultValue();
@@ -342,6 +351,9 @@ public class TableCompareService {
         record.setTargetDefaultValue(targetColumn == null ? null : targetColumn.getDefaultValue());
         record.setSourceNullable(sourceColumn == null ? null : sourceColumn.getNullable());
         record.setTargetNullable(targetColumn == null ? null : targetColumn.getNullable());
+        record.setTypeLengthCombinedStatus(resolveTypeLengthCombinedStatus(sourceExists, targetExists,
+                record.getSourceComparableType(), record.getTargetComparableType(),
+                record.getSourceLength(), record.getTargetLength(), options));
         record.setTypeStatus(ComparisonStatus.NOT_APPLICABLE);
         record.setLengthStatus(ComparisonStatus.NOT_APPLICABLE);
         record.setDefaultStatus(ComparisonStatus.NOT_APPLICABLE);
@@ -414,6 +426,38 @@ public class TableCompareService {
         return typeNormalizer.normalize(databaseType, columnMeta.getDataType(), options.getTypeMappings());
     }
 
+    private String resolveTypeLengthCombinedStatus(boolean sourceExists,
+                                                   boolean targetExists,
+                                                   String sourceComparableType,
+                                                   String targetComparableType,
+                                                   String sourceRawLength,
+                                                   String targetRawLength,
+                                                   CompareOptions options) {
+        if (!sourceExists) {
+            return TYPE_LENGTH_MISSING_SOURCE;
+        }
+        if (!targetExists) {
+            return TYPE_LENGTH_MISSING_TARGET;
+        }
+        if (!options.isCompareType() && !options.isCompareLength()) {
+            return TYPE_LENGTH_NOT_APPLICABLE;
+        }
+        if (options.isCompareType() && !Objects.equals(sourceComparableType, targetComparableType)) {
+            return TYPE_LENGTH_TYPE_MISMATCH;
+        }
+        if (!options.isCompareLength()) {
+            return TYPE_LENGTH_MATCH;
+        }
+
+        LengthDirection direction = compareLengthDirection(sourceRawLength, targetRawLength);
+        return switch (direction) {
+            case EQUAL -> TYPE_LENGTH_MATCH;
+            case TARGET_LONGER -> TYPE_LENGTH_TARGET_LONGER;
+            case TARGET_SHORTER -> TYPE_LENGTH_TARGET_SHORTER;
+            case UNKNOWN_MISMATCH -> TYPE_LENGTH_LENGTH_MISMATCH;
+        };
+    }
+
     private boolean resolveLengthMismatchAffectResult(CompareOptions options,
                                                       ColumnMeta sourceColumn,
                                                       ColumnMeta targetColumn,
@@ -472,8 +516,93 @@ public class TableCompareService {
         if (normalized.contains(",")) {
             return null;
         }
+        Integer parsedLeading = parseLeadingLength(normalized);
+        if (parsedLeading != null) {
+            return parsedLeading;
+        }
         try {
             return Integer.parseInt(normalized);
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
+    }
+
+    private Integer parseLeadingLength(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        String normalized = value.trim().toUpperCase();
+        StringBuilder digits = new StringBuilder();
+        for (int index = 0; index < normalized.length(); index++) {
+            char current = normalized.charAt(index);
+            if (Character.isDigit(current)) {
+                digits.append(current);
+                continue;
+            }
+            if (digits.length() > 0) {
+                break;
+            }
+            if (!Character.isWhitespace(current)) {
+                return null;
+            }
+        }
+        if (digits.length() == 0) {
+            return null;
+        }
+        try {
+            return Integer.parseInt(digits.toString());
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
+    }
+
+    private LengthDirection compareLengthDirection(String sourceLength, String targetLength) {
+        String normalizedSource = normalizeLength(sourceLength);
+        String normalizedTarget = normalizeLength(targetLength);
+        if (Objects.equals(normalizedSource, normalizedTarget)) {
+            return LengthDirection.EQUAL;
+        }
+
+        int[] sourceTuple = parseLengthTuple(normalizedSource);
+        int[] targetTuple = parseLengthTuple(normalizedTarget);
+        if (sourceTuple != null && targetTuple != null) {
+            if (sourceTuple[0] == targetTuple[0] && sourceTuple[1] == targetTuple[1]) {
+                return LengthDirection.EQUAL;
+            }
+            if (targetTuple[0] >= sourceTuple[0] && targetTuple[1] >= sourceTuple[1]) {
+                return LengthDirection.TARGET_LONGER;
+            }
+            return LengthDirection.TARGET_SHORTER;
+        }
+
+        Integer sourceSingle = parseSingleLength(normalizedSource);
+        Integer targetSingle = parseSingleLength(normalizedTarget);
+        if (sourceSingle != null && targetSingle != null) {
+            if (Objects.equals(sourceSingle, targetSingle)) {
+                return LengthDirection.EQUAL;
+            }
+            return targetSingle > sourceSingle ? LengthDirection.TARGET_LONGER : LengthDirection.TARGET_SHORTER;
+        }
+
+        return LengthDirection.UNKNOWN_MISMATCH;
+    }
+
+    private int[] parseLengthTuple(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        String normalized = value.trim();
+        if (!normalized.contains(",")) {
+            return null;
+        }
+        String[] parts = normalized.split(",");
+        if (parts.length != 2) {
+            return null;
+        }
+        try {
+            int precision = Integer.parseInt(parts[0].trim());
+            int scale = Integer.parseInt(parts[1].trim());
+            return new int[]{precision, scale};
         } catch (NumberFormatException ignored) {
             return null;
         }
@@ -561,5 +690,12 @@ public class TableCompareService {
         private String messageText() {
             return String.join("; ", messages);
         }
+    }
+
+    private enum LengthDirection {
+        EQUAL,
+        TARGET_LONGER,
+        TARGET_SHORTER,
+        UNKNOWN_MISMATCH
     }
 }

@@ -22,6 +22,7 @@ public class ColumnComparisonRecord {
     private String sourceLength;
     private String targetLength;
     private ComparisonStatus lengthStatus;
+    private String typeLengthCombinedStatus;
     private String sourceDefaultValue;
     private String targetDefaultValue;
     private ComparisonStatus defaultStatus;
@@ -73,6 +74,8 @@ public class ColumnComparisonRecord {
     public void setTargetLength(String targetLength) { this.targetLength = targetLength; }
     public ComparisonStatus getLengthStatus() { return lengthStatus; }
     public void setLengthStatus(ComparisonStatus lengthStatus) { this.lengthStatus = lengthStatus; }
+    public String getTypeLengthCombinedStatus() { return typeLengthCombinedStatus; }
+    public void setTypeLengthCombinedStatus(String typeLengthCombinedStatus) { this.typeLengthCombinedStatus = typeLengthCombinedStatus; }
     public String getSourceDefaultValue() { return sourceDefaultValue; }
     public void setSourceDefaultValue(String sourceDefaultValue) { this.sourceDefaultValue = sourceDefaultValue; }
     public String getTargetDefaultValue() { return targetDefaultValue; }

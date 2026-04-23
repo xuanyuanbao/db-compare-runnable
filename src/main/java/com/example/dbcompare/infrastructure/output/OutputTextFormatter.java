@@ -81,7 +81,7 @@ final class OutputTextFormatter {
             try {
                 labels.add(diffTypeText(DiffType.valueOf(trimmed)));
             } catch (IllegalArgumentException ignored) {
-                labels.add(trimmed);
+                labels.add(summaryStatusText(trimmed));
             }
         }
         return String.join(" | ", labels);
@@ -102,6 +102,13 @@ final class OutputTextFormatter {
             case "DEFAULT_MISMATCH" -> "默认值不一致";
             case "NULLABLE_MATCH" -> "可空性一致";
             case "NULLABLE_MISMATCH" -> "可空性不一致";
+            case "MISSING_SOURCE" -> "缺少源字段";
+            case "MISSING_TARGET" -> "缺少目标字段";
+            case "TARGET_LENGTH_LONGER" -> "目标长度大于源长度";
+            case "TARGET_LENGTH_SHORTER" -> "目标长度小于源长度";
+            case "PRESENCE_ISSUE" -> "存在性异常";
+            case "TARGET_LENGTH_TIGHTER" -> "目标长度不足";
+            case "TARGET_LENGTH_RELAXED" -> "目标更宽松";
             case "LOW" -> "低";
             case "MEDIUM" -> "中";
             case "HIGH" -> "高";
@@ -110,6 +117,7 @@ final class OutputTextFormatter {
             case "OTHER" -> "其他差异";
             case "MATCH" -> "一致";
             case "MISMATCH" -> "不一致";
+            case "NOT_APPLICABLE" -> "不适用";
             case "NO_DATA" -> "无数据";
             default -> value;
         };
@@ -142,6 +150,6 @@ final class OutputTextFormatter {
                 .replace("nullable mismatch", "可空性不一致")
                 .replace("MATCH", "一致")
                 .replace("MISMATCH", "不一致")
-                .replace("Multiple source schemas matched the same table name: ", "多个源 Schema 匹配到同一张表：");
+                .replace("Multiple source schemas matched the same table name: ", "多个源 Schema 匹配到同一张表: ");
     }
 }
