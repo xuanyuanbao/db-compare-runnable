@@ -102,6 +102,8 @@ public class ExcelReportWriter {
             columns.add(new DetailColumn("目标原始可空", 18, (row, record) -> row.write(record.getTargetNullable(), null)));
             columns.add(new DetailColumn("可空状态", 18, (row, record) -> row.write(statusText(record.getNullableStatus()), row.statusStyle(record))));
         }
+        columns.add(new DetailColumn("源字段注释", 30, (row, record) -> row.write(record.getSourceDescription(), null)));
+        columns.add(new DetailColumn("目标字段注释", 30, (row, record) -> row.write(record.getTargetDescription(), null)));
         columns.add(new DetailColumn("整体状态", 18, (row, record) -> row.write(statusText(record.getOverallStatus()), row.statusStyle(record))));
         columns.add(new DetailColumn("差异分组", 18, (row, record) -> row.write(OutputTextFormatter.diffGroupText(record.getDiffGroup()), row.statusStyle(record))));
         columns.add(new DetailColumn("是否影响结果", 18, (row, record) -> row.write(OutputTextFormatter.boolText(record.isAffectsResult()), row.statusStyle(record))));

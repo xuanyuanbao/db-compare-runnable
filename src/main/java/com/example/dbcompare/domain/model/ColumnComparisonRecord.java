@@ -28,6 +28,8 @@ public class ColumnComparisonRecord {
     private ComparisonStatus defaultStatus;
     private String sourceNullable;
     private String targetNullable;
+    private String sourceDescription;
+    private String targetDescription;
     private ComparisonStatus nullableStatus;
     private ComparisonStatus overallStatus;
     private DiffGroup diffGroup = DiffGroup.MAIN;
@@ -86,6 +88,10 @@ public class ColumnComparisonRecord {
     public void setSourceNullable(String sourceNullable) { this.sourceNullable = sourceNullable; }
     public String getTargetNullable() { return targetNullable; }
     public void setTargetNullable(String targetNullable) { this.targetNullable = targetNullable; }
+    public String getSourceDescription() { return sourceDescription; }
+    public void setSourceDescription(String sourceDescription) { this.sourceDescription = sourceDescription; }
+    public String getTargetDescription() { return targetDescription; }
+    public void setTargetDescription(String targetDescription) { this.targetDescription = targetDescription; }
     public ComparisonStatus getNullableStatus() { return nullableStatus; }
     public void setNullableStatus(ComparisonStatus nullableStatus) { this.nullableStatus = nullableStatus; }
     public ComparisonStatus getOverallStatus() { return overallStatus; }

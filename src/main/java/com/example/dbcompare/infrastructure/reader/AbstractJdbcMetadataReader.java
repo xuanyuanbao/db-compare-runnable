@@ -191,9 +191,40 @@ public abstract class AbstractJdbcMetadataReader implements MetadataReader {
         columnMeta.setNullable(columns.getString("IS_NULLABLE"));
         columnMeta.setDefaultValue(columns.getString("COLUMN_DEF"));
         columnMeta.setOrdinalPosition(columns.getInt("ORDINAL_POSITION"));
+        columnMeta.setDescription(firstNotBlank(
+                columnValue(columns, "LONG_COMMENT"),
+                columnValue(columns, "COLUMN_TEXT"),
+                columnValue(columns, "COLUMN_HEADING"),
+                columnValue(columns, "REMARKS")
+        ));
         tableMeta.getColumns().put(columnName, columnMeta);
     }
 
+
+    private String columnValue(ResultSet columns, String label) throws SQLException {
+        try {
+            return trimToNull(columns.getString(label));
+        } catch (SQLException ignored) {
+            return null;
+        }
+    }
+
+    private String firstNotBlank(String... values) {
+        for (String value : values) {
+            if (value != null && !value.isBlank()) {
+                return value;
+            }
+        }
+        return null;
+    }
+
+    private String trimToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
     protected boolean shouldReadSchema(String schemaName, DataSourceInfo source) {
         String forcedSchema = NameNormalizer.normalize(source.getSchema());
         if (forcedSchema != null && !forcedSchema.equals(NameNormalizer.normalize(schemaName))) {
