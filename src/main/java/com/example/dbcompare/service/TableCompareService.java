@@ -270,6 +270,8 @@ public class TableCompareService {
         String targetNullable = normalizeNullable(targetRawNullable);
         record.setSourceNullable(sourceRawNullable);
         record.setTargetNullable(targetRawNullable);
+        record.setSourceDescription(sourceColumn.getDescription());
+        record.setTargetDescription(targetColumn.getDescription());
         applyOptionalAttributeComparison(record::setNullableStatus, options.isCompareNullable(), options.isNullableMismatchAffectResult(),
                 Objects.equals(sourceNullable, targetNullable), DiffType.COLUMN_NULLABLE_MISMATCH, "Nullable mismatch", accumulator, result,
                 sourceInfo, sourceSchema, sourceTableName, targetSchema, targetTableName, columnName,
@@ -351,6 +353,8 @@ public class TableCompareService {
         record.setTargetDefaultValue(targetColumn == null ? null : targetColumn.getDefaultValue());
         record.setSourceNullable(sourceColumn == null ? null : sourceColumn.getNullable());
         record.setTargetNullable(targetColumn == null ? null : targetColumn.getNullable());
+        record.setSourceDescription(sourceColumn == null ? null : sourceColumn.getDescription());
+        record.setTargetDescription(targetColumn == null ? null : targetColumn.getDescription());
         record.setTypeLengthCombinedStatus(resolveTypeLengthCombinedStatus(sourceExists, targetExists,
                 record.getSourceComparableType(), record.getTargetComparableType(),
                 record.getSourceLength(), record.getTargetLength(), options));

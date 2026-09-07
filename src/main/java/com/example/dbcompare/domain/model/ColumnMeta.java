@@ -7,6 +7,7 @@ public class ColumnMeta {
     private String nullable;
     private String defaultValue;
     private Integer ordinalPosition;
+    private String description;
 
     public String getColumnName() { return columnName; }
     public void setColumnName(String columnName) { this.columnName = columnName; }
@@ -20,4 +21,6 @@ public class ColumnMeta {
     public void setDefaultValue(String defaultValue) { this.defaultValue = defaultValue; }
     public Integer getOrdinalPosition() { return ordinalPosition; }
     public void setOrdinalPosition(Integer ordinalPosition) { this.ordinalPosition = ordinalPosition; }
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
 }
